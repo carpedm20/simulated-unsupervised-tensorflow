@@ -24,9 +24,9 @@ def main(_):
       'hand': hand_data.DataLoader,
   }[config.data_set]
 
+  model = Model(config)
   data_loader = DataLoader(config.data_dir, config.batch_size,
                            config.debug, rng=rng)
-  model = Model()
 
 if __name__ == "__main__":
   config, unparsed = get_config()

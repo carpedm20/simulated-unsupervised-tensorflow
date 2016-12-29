@@ -16,8 +16,8 @@ DATA_FNAME = 'gaze.npz'
 
 def maybe_download_and_extract(
     data_path,
-    url='http://datasets.d2.mpi-inf.mpg.de/MPIIGAZE_PATH/MPIIGAZE_PATH.tar.gz'):
-  if not os.path.exists(os.path.join(data_path, 'MPIIGAZE_PATH')):
+    url='http://datasets.d2.mpi-inf.mpg.de/MPIIGaze/MPIIGaze.tar.gz'):
+  if not os.path.exists(os.path.join(data_path, MPIIGAZE_PATH)):
     if not os.path.exists(data_path):
       os.makedirs(data_path)
 
@@ -32,11 +32,11 @@ def maybe_download_and_extract(
 
       filepath, _ = urllib.request.urlretrieve(url, filepath, _progress)
       statinfo = os.stat(filepath)
-      print('\nSuccessfully downloaded', filename, statinfo.st_size, 'bytes.')
+      print('\nSuccessfully downloaded {} {} bytes.'.format(filename, statinfo.st_size))
       tarfile.open(filepath, 'r:gz').extractall(data_path)
 
 def maybe_preprocess(data_path):
-  base_path = os.path.join(data_path, 'MPIIGAZE_PATH/Data/Normalized')
+  base_path = os.path.join(data_path, '{}/Data/Normalized'.format(MPIIGAZE_PATH))
   npz_path = os.path.join(data_path, DATA_FNAME)
 
   if os.path.exists(npz_path):
@@ -48,6 +48,8 @@ def maybe_preprocess(data_path):
     for filename in fnmatch.filter(filenames, '*.mat'):
       mat_paths.append(os.path.join(root, filename))
 
+  print("[*] Preprocessing `gaze` data...")
+
   images =[]
   for mat_path in tqdm(mat_paths):
     mat = loadmat(mat_path)
@@ -57,14 +59,7 @@ def maybe_preprocess(data_path):
     images.extend(mat['data'][0][0][1][0][0][1])
 
   real_data = np.stack(images, axis=0)
-
-  # UnityEyes dataset
-  synthetic_data = None
-
-  #raise Exception("[!] Not implemented yet")
-
-  np.savez(npz_path, real=real_data, synthetic=synthetic_data)
-  print("[*] Preprocessing of `gaze` data is finished.")
+  np.savez(npz_path, real=real_data)
 
 def load(data_path, debug=False):
   if not os.path.exists(data_path):
@@ -75,27 +70,24 @@ def load(data_path, debug=False):
   maybe_preprocess(data_path)
 
   gaze_data = np.load(os.path.join(data_path, DATA_FNAME))
+  real_data = gaze_data['real']
 
-  real_data, synthetic_data = gaze_data['real'], gaze_data['synthetic']
   if debug:
     print("[*] Save sample images in {}".format(data_path))
-    for idx in range(10):
-      image_path = os.path.join(synthetic_images,
-                                "sample_real_{}".format(idx))
+    for idx in range(100):
+      image_path = os.path.join(data_path, "sample_real_{}.png".format(idx))
       imwrite(image_path, real_data[idx])
-  return real_data, synthetic_data
+  return real_data
 
 class DataLoader(object):
   def __init__(self, data_dir, batch_size, debug=False, rng=None):
     self.data_path = os.path.join(data_dir, 'gaze')
     self.batch_size = batch_size
 
-    self.data, self.labels = load(self.data_path, conf.debug)
-    self.data = np.transpose(self.data, (0,2,3,1)) # (N,3,32,32) -> (N,32,32,3)
+    self.data = load(self.data_path, debug)
     
     self.p = 0 # pointer to where we are in iteration
     self.rng = np.random.RandomState(1) if rng is None else rng
-
 
   def get_observation_size(self):
     return self.data.shape[1:]
