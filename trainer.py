@@ -16,6 +16,7 @@ class Trainer(object):
     self.learning_rate = config.learning_rate
 
     self.network = Network(config)
+    self.history_buffer = Buffer(config)
 
   def build_optim(self):
     self.optim = tf.train.GradientDescentOptimizer(self.learning_rate)
