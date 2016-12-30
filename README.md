@@ -15,7 +15,11 @@ TensorFlow implementation of [Learning from Simulated and Unsupervised Images th
 
 ## Usage
 
-First generate synthetic gaze dataset with [UnityEyes](http://www.cl.cam.ac.uk/research/rainbow/projects/unityeyes/). There is no details in the paper on this but I changed `Camera parameters` to `[0, 0, 20, 40]` before generating images.
+
+To generate synthetic dataset:
+
+1. Run [UnityEyes](http://www.cl.cam.ac.uk/research/rainbow/projects/unityeyes/) with changing `Camera parameters` to `[0, 0, 20, 40]`.
+2. ...
 
 To train a model:
 
