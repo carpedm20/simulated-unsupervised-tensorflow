@@ -1,6 +1,8 @@
 # Simulated+Unsupervised (S+U) in TensorFlow
 
-TensorFlow implementation of [Learning from Simulated and Unsupervised Images through Adversarial Training](https://arxiv.org/abs/1612.07828)
+TensorFlow implementation of [Learning from Simulated and Unsupervised Images through Adversarial Training](https://arxiv.org/abs/1612.07828).
+
+(in progress)
 
 
 ## Requirements

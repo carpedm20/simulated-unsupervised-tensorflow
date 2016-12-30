@@ -3,7 +3,8 @@ from tqdm import tqdm
 import tensorflow as tf
 from tensorflow.contrib.framework.python.ops import arg_scope
 
-from network import Network
+from model import Model
+from buffer import Buffer
 
 class Trainer(object):
   def __init__(self, config):
@@ -15,7 +16,7 @@ class Trainer(object):
 
     self.learning_rate = config.learning_rate
 
-    self.network = Network(config)
+    self.network = Model(config)
     self.history_buffer = Buffer(config)
 
   def build_optim(self):
@@ -32,6 +33,8 @@ class Trainer(object):
     )
 
   def train(self):
+    self.build_optim()
+
     for k in range(self.initial_K_g):
       sess.run(self.refiner_optim)
 

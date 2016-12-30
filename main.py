@@ -29,7 +29,6 @@ def main(_):
                            config.debug, rng=rng)
 
   if config.is_train:
-    trainer.build_optim()
     trainer.train()
   else:
     trainer.test()

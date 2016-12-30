@@ -12,7 +12,7 @@ class Buffer(object):
     ]
 
     self.idx = 0
-    self.data = np.zeros([self.buffer_size] + image_dims])
+    self.data = np.zeros([self.buffer_size] + image_dims)
 
   def push(self, batches):
     batch_size = len(batches)

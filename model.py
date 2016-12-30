@@ -34,18 +34,19 @@ class Model(object):
                       feed_dict={input_op: inputs,
                                  target_op: targets})
 
-		self._runs = {
-			'generate_train': ,
-			'estimate_test': ,
-			'generate_train': ,
-			'estimate_test': ,
-		}
+    self._runs = {
+      'generative_train': None,
+      'generative_test': None,
+      'estimate_train': None,
+      'estimate_test': None,
+    }
 
-		self.train_step = self._runs['{}_train'.format(config.mode)]
-		self.test_step = self._runs['{}_test'.format(config.mode)]
+    self.train_step = self._runs['{}_train'.format(config.task_type)]
+    self.test_step = self._runs['{}_test'.format(config.task_type)]
 
   def _build_model(self):
-    with arg_scope([resnet_block, conv2d, max_pool2d], layer_dict=self.layer_dict):
+    with arg_scope([resnet_block, conv2d, max_pool2d],
+                   layer_dict=self.layer_dict):
       self.R_x = self._build_refiner()
 
       self.D_x = self._build_discrim(self.normalized_x)
@@ -64,8 +65,9 @@ class Model(object):
       self.realism_r_loss = tf.reduce_sum(
           CE_loss(self.D_R_x, real_label), [1, 2, 3], name="realism_r_loss")
       self.regularization_r_loss = \
-          self.reg_scale * tf.reduce_sum(self.R_x - self.normalized_x, [1, 2, 3],
-                                         name="regularization_r_loss")
+          self.reg_scale * tf.reduce_sum(
+              self.R_x - self.normalized_x, [1, 2, 3],
+              name="regularization_r_loss")
 
       self.refiner_loss = tf.reduce_mean(
           self.realism_r_loss - self.regularization_r_loss,
