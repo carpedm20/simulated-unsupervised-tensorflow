@@ -19,11 +19,21 @@ class Trainer(object):
     self.history_buffer = Buffer(config)
 
   def build_optim(self):
-    self.optim = tf.train.GradientDescentOptimizer(self.learning_rate)
+    optim = tf.train.GradientDescentOptimizer(self.learning_rate)
+    self.refiner_optim = optim.minimize(
+        self.refiner_loss,
+        self.network.refiner_vars,
+    )
+
+    optim = tf.train.GradientDescentOptimizer(self.learning_rate)
+    self.discrim_optim = optim.minimize(
+        self.discrim_loss,
+        self.network.discrim_vars,
+    )
 
   def train(self):
     for k in range(self.initial_K_g):
-      pass
+      sess.run(self.refiner_optim)
 
     for k in range(self.initial_K_d):
       pass
@@ -34,3 +44,6 @@ class Trainer(object):
 
       for k in range(self.K_d):
         pass
+
+  def test(self):
+    pass

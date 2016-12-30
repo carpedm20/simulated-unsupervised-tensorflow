@@ -73,10 +73,15 @@ def load(data_path, debug=False):
   real_data = gaze_data['real']
 
   if debug:
-    print("[*] Save sample images in {}".format(data_path))
+    sample_dir = os.path.join(data_path, "samples")
+    if not os.path.exists(sample_dir):
+      os.makedirs(sample_dir)
+
+    print("[*] Save samples images in {}".format(data_path))
     for idx in range(100):
-      image_path = os.path.join(data_path, "sample_real_{}.png".format(idx))
+      image_path = os.path.join(sample_dir, "real_{}.png".format(idx))
       imwrite(image_path, real_data[idx])
+
   return real_data
 
 class DataLoader(object):

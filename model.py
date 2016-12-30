@@ -3,10 +3,10 @@ from tensorflow.contrib.framework import arg_scope
 
 from layers import *
 
-def to_float(layer):
+def normalize(layer):
   return tf.image.convert_image_dtype(layer, tf.float32)
 
-class Network(object):
+class Model(object):
   def __init__(self, config):
     self.reg_scale = config.reg_scale
 
@@ -23,6 +23,28 @@ class Network(object):
     self.normalized_x = normalize(self.x)
     self.normalized_x_history = normalize(self.x_history)
 
+    self._build_model()
+
+    def run_step(self, sess, optim, to_return,
+                 inputs, targets, input_op, target_op,
+                 summary_op=None):
+      if summary_op is not None:
+        to_return += [summary_op]
+      return sess.run(to_return,
+                      feed_dict={input_op: inputs,
+                                 target_op: targets})
+
+		self._runs = {
+			'generate_train': ,
+			'estimate_test': ,
+			'generate_train': ,
+			'estimate_test': ,
+		}
+
+		self.train_step = self._runs['{}_train'.format(config.mode)]
+		self.test_step = self._runs['{}_test'.format(config.mode)]
+
+  def _build_model(self):
     with arg_scope([resnet_block, conv2d, max_pool2d], layer_dict=self.layer_dict):
       self.R_x = self._build_refiner()
 
@@ -31,6 +53,7 @@ class Network(object):
       self.D_x_history = self._build_discrim(self.normalized_x_history)
 
       #self.estimate_outputs = self._build_estimation_network()
+    self._build_loss()
 
   def _build_loss(self):
     # Refiner loss
@@ -72,7 +95,7 @@ class Network(object):
     with tf.variable_scope("refiner") as sc:
       layer = repeat(layer, 5, resnet_block, scope="resnet")
       layer = conv2d(layer, 1, 1, 1, scope="conv_1")
-      self.refiner_variables = sc.get_variable()
+      self.refiner_vars = tf.contrib.framework.get_variables(sc)
     return layer
 
   def _build_discrim(self, layer):
@@ -84,7 +107,7 @@ class Network(object):
       layer = conv2d(layer, 32, 1, 1, scope="conv_4")
       layer = conv2d(layer, 2, 1, 1, 
           activation_fn=tf.nn.softmax, scope="conv_5")
-      self.discriminator_variables = sc.get_variable()
+      self.discrim_vars = tf.contrib.framework.get_variables(sc)
     return layer
 
   def _build_estimation_network(self):

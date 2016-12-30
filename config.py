@@ -28,6 +28,9 @@ data_arg.add_argument('--input_channel', type=int, default=1)
 
 # Training / test parameters
 train_arg = add_argument_group('Training')
+train_arg.add_argument('--mode', type=str, default='generative', 
+                       choices=['generative', 'estimation'], help='')
+train_arg.add_argument('--is_train', type=str2bool, default=True, help='')
 train_arg.add_argument('--optimizer', type=str, default='rmsprop', help='')
 train_arg.add_argument('--max_step', type=int, default=200, help='')
 train_arg.add_argument('--reg_scale', type=float, default=1, help='')

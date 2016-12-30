@@ -7,7 +7,7 @@ import argparse
 import numpy as np
 import tensorflow as tf
 
-from model import Model
+from trainer import Trainer
 from config import get_config
 
 import data.gaze_data as gaze_data
@@ -24,9 +24,15 @@ def main(_):
       'hand': hand_data.DataLoader,
   }[config.data_set]
 
-  model = Model(config)
+  trainer = Trainer(config)
   data_loader = DataLoader(config.data_dir, config.batch_size,
                            config.debug, rng=rng)
+
+  if config.is_train:
+    trainer.build_optim()
+    trainer.train()
+  else:
+    trainer.test()
 
 if __name__ == "__main__":
   config, unparsed = get_config()
