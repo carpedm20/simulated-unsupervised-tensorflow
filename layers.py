@@ -4,6 +4,9 @@ from tensorflow.contrib.framework import add_arg_scope
 
 CE_loss = tf.nn.sigmoid_cross_entropy_with_logits
 
+def normalize(layer):
+  return tf.image.convert_image_dtype(layer, tf.float32)
+
 def _update_dict(layer_dict, scope, layer):
   name = "{}/{}".format(tf.get_variable_scope().name, scope)
   layer_dict[name] = layer

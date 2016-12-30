@@ -6,9 +6,9 @@ class Buffer(object):
     self.batch_size = config.batch_size
 
     image_dims = [
-        config.image_height,
-        config.image_width,
-        config.image_channel,
+        config.input_height,
+        config.input_width,
+        config.input_channel,
     ]
 
     self.idx = 0

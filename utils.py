@@ -1,3 +1,4 @@
+import os
 from datetime import datetime
 
 try:
@@ -13,3 +14,18 @@ except:
 
 import scipy.io as sio
 loadmat = sio.loadmat
+
+def prepare_dirs(config):
+  if config.load_path:
+    config.model_dir = os.path.join(
+        config.log_dir, "{}_{}".format(config.task, config.load_path))
+  else:
+    config.model_dir = os.path.join(
+        config.log_dir, "{}_{}".format(config.task, get_time()))
+
+  for path in [config.log_dir, config.data_dir]:
+    if not os.path.exists(path):
+      os.makedirs(path)
+
+def get_time():
+    return datetime.now().strftime("%Y-%m-%d_%H-%M-%S")

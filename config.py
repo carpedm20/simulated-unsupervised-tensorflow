@@ -28,7 +28,7 @@ data_arg.add_argument('--input_channel', type=int, default=1)
 
 # Training / test parameters
 train_arg = add_argument_group('Training')
-train_arg.add_argument('--task_type', type=str, default='generative', 
+train_arg.add_argument('--task', type=str, default='generative', 
                        choices=['generative', 'estimation'], help='')
 train_arg.add_argument('--is_train', type=str2bool, default=True, help='')
 train_arg.add_argument('--optimizer', type=str, default='rmsprop', help='')
@@ -39,13 +39,16 @@ train_arg.add_argument('--initial_K_g', type=int, default=1000, help='')
 train_arg.add_argument('--K_d', type=int, default=1, help='')
 train_arg.add_argument('--K_g', type=int, default=2, help='')
 train_arg.add_argument('--batch_size', type=int, default=512, help='')
+train_arg.add_argument('--buffer_size', type=int, default=5120, help='')
 train_arg.add_argument('--num_epochs', type=int, default=12, help='')
 train_arg.add_argument('--random_seed', type=int, default=123, help='')
 train_arg.add_argument('--learning_rate', type=float, default=0.001, help='')
+train_arg.add_argument('--checkpoint_secs', type=int, default=300, help='')
 
 # Misc
 misc_arg = add_argument_group('Misc')
 misc_arg.add_argument('--log_dir', type=str, default='log')
+misc_arg.add_argument('--load_path', type=str, default='')
 misc_arg.add_argument('--debug', type=str2bool, default=True)
 
 def get_config():

@@ -3,6 +3,9 @@ data/hand
 data/gaze
 *.png
 
+# Log
+log
+
 # ETC
 paper.pdf
 

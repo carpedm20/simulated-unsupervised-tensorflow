@@ -3,30 +3,22 @@ import sys
 import time
 import json
 import argparse
-
 import numpy as np
 import tensorflow as tf
 
 from trainer import Trainer
 from config import get_config
-
-import data.gaze_data as gaze_data
-import data.hand_data as hand_data
+from utils import prepare_dirs
 
 config = None
 
 def main(_):
+  prepare_dirs(config)
+
   rng = np.random.RandomState(config.random_seed)
   tf.set_random_seed(config.random_seed)
 
-  DataLoader = {
-      'gaze': gaze_data.DataLoader,
-      'hand': hand_data.DataLoader,
-  }[config.data_set]
-
-  trainer = Trainer(config)
-  data_loader = DataLoader(config.data_dir, config.batch_size,
-                           config.debug, rng=rng)
+  trainer = Trainer(config, rng)
 
   if config.is_train:
     trainer.train()
