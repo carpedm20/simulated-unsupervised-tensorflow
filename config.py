@@ -26,6 +26,8 @@ data_arg.add_argument('--input_height', type=int, default=35)
 data_arg.add_argument('--input_width', type=int, default=55)
 data_arg.add_argument('--input_channel', type=int, default=1)
 data_arg.add_argument('--max_synthetic_num', type=int, default=1200000)
+data_arg.add_argument('--mpiigaze_dir', type=str, default="MPIIGaze")
+data_arg.add_argument('--unityeye_dir', type=str, default="UnityEyes")
 
 # Training / test parameters
 train_arg = add_argument_group('Training')

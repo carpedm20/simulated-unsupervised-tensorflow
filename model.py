@@ -16,11 +16,11 @@ class Model(object):
         config.input_width, config.input_channel,
     ]
 
-    self.x = tf.placeholder(tf.uint8, input_dims, 'x')
-    self.x_history = tf.placeholder(tf.uint8, input_dims, 'x_history')
+    self.x = tf.placeholder(tf.uint8, [None, None, None, config.input_channel], 'x')
+    self.x_history = tf.placeholder(tf.uint8, [None, None, None, config.input_channel], 'x_history')
 
-    self.normalized_x = normalize(self.x)
-    self.normalized_x_history = normalize(self.x_history)
+    self.normalized_x = normalize(tf.image.resize_images(self.x, [config.input_height, config.input_width]))
+    self.normalized_x_history = normalize(tf.image.resize_images(self.x_history, [config.input_height, config.input_width]))
 
     self._build_model()
     self._build_steps()

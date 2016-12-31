@@ -9,17 +9,15 @@ from six.moves import urllib
 
 import numpy as np
 
-from utils import loadmat, imread, imwrite
-
-MPIIGAZE_PATH = 'MPIIGaze'
-UNITYEYE_PATH = 'UnityEyes'
+from utils import loadmat, imread, imwrite, process_json_list
 
 DATA_FNAME = 'gaze.npz'
 
 def maybe_download_and_extract(
+    config,
     data_path,
     url='http://datasets.d2.mpi-inf.mpg.de/MPIIGaze/MPIIGaze.tar.gz'):
-  if not os.path.exists(os.path.join(data_path, MPIIGAZE_PATH)):
+  if not os.path.exists(os.path.join(data_path, config.mpiigaze_dir)):
     if not os.path.exists(data_path):
       os.makedirs(data_path)
 
@@ -37,9 +35,11 @@ def maybe_download_and_extract(
       print('\nSuccessfully downloaded {} {} bytes.'.format(filename, statinfo.st_size))
       tarfile.open(filepath, 'r:gz').extractall(data_path)
 
-def maybe_preprocess(data_path, max_synthetic_num, sample_path=None):
+def maybe_preprocess(config, data_path, sample_path=None):
+  max_synthetic_num = config.max_synthetic_num
+  
   # MPIIGaze dataset
-  base_path = os.path.join(data_path, '{}/Data/Normalized'.format(MPIIGAZE_PATH))
+  base_path = os.path.join(data_path, '{}/Data/Normalized'.format(config.mpiigaze_dir))
   npz_path = os.path.join(data_path, DATA_FNAME)
 
   if not os.path.exists(npz_path):
@@ -58,46 +58,50 @@ def maybe_preprocess(data_path, max_synthetic_num, sample_path=None):
       # Right eye
       real_images.extend(mat['data'][0][0][1][0][0][1])
 
+    real_data = np.stack(real_images, axis=0)
+    np.savez(npz_path, real=real_data)
+
   # UnityEyes dataset
-  jpg_paths = glob(os.path.join(data_path, '{}/*_cropped.jpg'.format(UNITYEYE_PATH)))
+  cropped_jpg_paths = glob(os.path.join(data_path, '{}/*_cropped.png'.format(config.unityeye_dir)))
+  jpg_paths = glob(os.path.join(data_path, '{}/*.jpg'.format(config.unityeye_dir)))
 
-  if len(jpg_paths) == 0:
-    jpg_paths = glob(os.path.join(data_path, '{}/*.jpg'.format(UNITYEYE_PATH)))
-    json_paths = glob(os.path.join(data_path, '{}/*.json'.format(UNITYEYE_PATH)))
+  if len(cropped_jpg_paths) != len(jpg_paths):
+    json_paths = glob(os.path.join(data_path, '{}/*.json'.format(config.unityeye_dir)))
 
-    raise Exception(
-        "[!] `# of synthetic data`={} is not bigger than `max_synthetic_num={}`". \
-            format(len(jpg_paths), max_synthetic_num))
+    assert len(jpg_paths) >= max_synthetic_num, \
+        "[!] # of synthetic data ({}) is smaller than max_synthetic_num ({})". \
+            format(len(jpg_paths), max_synthetic_num)
+
+    jpg_paths = jpg_paths[:max_synthetic_num]
+    json_paths = json_paths[:max_synthetic_num]
 
     print("[*] Preprocessing synthetic `gaze` data...")
-    for jpg_path, json_path in tqdm(zip(jpg_paths, json_paths)):
+    for (jpg_path, json_path) in tqdm(zip(jpg_paths, json_paths)):
       with open(json_path) as json_f:
         img = imread(jpg_path)
         j = json.loads(json_f.read())
 
-        for key in ["interior_margin_2d", "caruncle_2d", "iris_2d"]:
-          j[key] = np.array([eval(row) for row in j[key]])
+        for key in ["interior_margin_2d"]: #, "caruncle_2d", "iris_2d"]:
+          j[key] = process_json_list(j[key], img)
 
-          if sample_path:
-            imwrite("{}.png", img[min(j[key][:,0]):max(j[key][:,0]),min(j[key][:,1]):max(j[key][:,1])])
-        import ipdb; ipdb.set_trace() 
-        x = 123
+          x_min, x_max = int(min(j[key][:,0])), int(max(j[key][:,0]))
+          y_min, y_max = int(min(j[key][:,1])), int(max(j[key][:,1]))
 
-  real_data = np.stack(real_images, axis=0)
-  np.savez(npz_path, real=real_data)
+        x_center, y_center = (x_min + x_max)/2, (y_min + y_max)/2
+        imwrite(jpg_path.replace(".jpg", "_cropped.png"), img[y_center-42: y_center+42, x_center-70:x_center+70])
 
-def load(data_path, sample_path, max_synthetic_num, debug=False):
+def load(config, data_path, sample_path):
   if not os.path.exists(data_path):
     print('creating folder', data_path)
     os.makedirs(data_path)
 
-  maybe_download_and_extract(data_path)
-  maybe_preprocess(data_path, max_synthetic_num, sample_path)
+  maybe_download_and_extract(config, data_path)
+  maybe_preprocess(config, data_path, sample_path)
 
   gaze_data = np.load(os.path.join(data_path, DATA_FNAME))
   real_data = gaze_data['real']
 
-  if debug:
+  if config.debug:
     if not os.path.exists(sample_path):
       os.makedirs(sample_path)
 
@@ -115,7 +119,9 @@ class DataLoader(object):
     self.batch_size = config.batch_size
     self.debug = config.debug
 
-    self.data = load(self.data_path, self.sample_path, config.max_synthetic_num, self.debug)
+    self.data = load(config, self.data_path, self.sample_path)
+    if np.rank(self.data) == 3:
+      self.data = np.expand_dims(self.data, -1)
     
     self.p = 0 # pointer to where we are in iteration
     self.rng = np.random.RandomState(1) if rng is None else rng
