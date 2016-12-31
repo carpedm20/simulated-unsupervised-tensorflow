@@ -26,8 +26,7 @@ class Trainer(object):
         'gaze': gaze_data.DataLoader,
         'hand': hand_data.DataLoader,
     }[config.data_set]
-    self.data_loader = DataLoader(
-        config.data_dir, config.batch_size, config.debug, rng=rng)
+    self.data_loader = DataLoader(config, rng=rng)
 
     self.summary_ops = {}
     self.summary_placeholders = {}
@@ -55,8 +54,10 @@ class Trainer(object):
     print("[*] Training starts...")
 
     for k in range(self.initial_K_g):
+      import ipdb; ipdb.set_trace() 
       res = self.model.train_refiner(
-          sess, self.data_loader.next(), with_output)
+          sess, self.data_loader.next(), with_output=True)
+      import ipdb; ipdb.set_trace() 
 
     for k in range(self.initial_K_d):
       pass

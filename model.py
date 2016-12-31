@@ -108,32 +108,32 @@ class Model(object):
       ])
 
   def _build_steps(self):
-    def run(self, sess, inputs, to_return, input_op, summary_op=None, output_op=None):
+    def run(sess, inputs, to_return, input_op, summary_op=None, output_op=None):
       if summary_op is not None:
         to_return += [summary_op]
       if output_op is not None:
         to_return += [output_op]
       return sess.run(to_return, feed_dict={ input_op: inputs })
 
-    def train_refiner(self, sess, inputs, with_summary=False, with_output=False):
-      return run(self, sess, inputs,
+    def train_refiner(sess, inputs, with_summary=False, with_output=False):
+      return run(sess, inputs,
                  [self.refiner_loss, self.refiner_optim], self.x, 
                  summary_op=self.refiner_summary if with_summary else None,
                  output_op=self.R_x if with_output else None)
 
-    def test_refiner(self, sess, inputs, with_summary=False, with_output=False):
-      return run(self, sess, inputs,
+    def test_refiner(sess, inputs, with_summary=False, with_output=False):
+      return run(sess, inputs,
                  [self.refiner_loss], self.x,
                  summary_op=self.refiner_summary if with_summary else None,
                  output_op=self.R_x if with_output else None)
 
-    def train_discrim(self, sess, inputs, with_summary=False):
+    def train_discrim(sess, inputs, with_summary=False):
       return run(self, sess, inputs,
                  [self.discrim_loss, self.discrim_optim], self.x,
                  summary_op=self.discrim_summary if with_summary else None)
 
-    def test_discrim(self, sess, inputs, with_summary=False):
-      return run(self, sess, inputs,
+    def test_discrim(sess, inputs, with_summary=False):
+      return run(sess, inputs,
                  [self.discrim_loss], self.x,
                  summary_op=self.discrim_summary if with_summary else None)
 
