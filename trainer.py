@@ -44,7 +44,7 @@ class Trainer(object):
                              summary_writer=self.summary_writer,
                              save_summaries_secs=300,
                              save_model_secs=self.checkpoint_secs,
-                             global_step=self.model.global_step)
+                             global_step=self.model.discrim_step)
 
     config = tf.ConfigProto(allow_soft_placement=True)
     config.gpu_options.allow_growth=True
@@ -53,20 +53,18 @@ class Trainer(object):
 
     print("[*] Training starts...")
 
-    for k in range(self.initial_K_g):
-      import ipdb; ipdb.set_trace() 
+    for k in xrange(self.initial_K_g):
       res = self.model.train_refiner(
           sess, self.data_loader.next(), with_output=True)
-      import ipdb; ipdb.set_trace() 
 
-    for k in range(self.initial_K_d):
+    for k in xrange(self.initial_K_d):
       pass
 
-    for step in range(self.max_step):
-      for k in range(self.K_g):
+    for step in xrange(self.max_step):
+      for k in xrange(self.K_g):
         pass
 
-      for k in range(self.K_d):
+      for k in xrange(self.K_d):
         pass
 
   def test(self):

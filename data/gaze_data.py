@@ -3,15 +3,23 @@ import sys
 import json
 import fnmatch
 import tarfile
+from PIL import Image
 from glob import glob
 from tqdm import tqdm
 from six.moves import urllib
 
 import numpy as np
 
-from utils import loadmat, imread, imwrite, process_json_list
+from utils import loadmat, imread, imwrite
 
 DATA_FNAME = 'gaze.npz'
+
+def save_array_to_grayscale_image(array, path):
+  Image.fromarray(array).convert('L').save(path)
+
+def process_json_list(json_list, img):
+  ldmks = [eval(s) for s in json_list]
+  return np.array([(x, img.shape[0]-y, z) for (x,y,z) in ldmks])
 
 def maybe_download_and_extract(
     config,
@@ -73,22 +81,27 @@ def maybe_preprocess(config, data_path, sample_path=None):
             format(len(jpg_paths), max_synthetic_num)
 
     jpg_paths = jpg_paths[:max_synthetic_num]
-    json_paths = json_paths[:max_synthetic_num]
-
     print("[*] Preprocessing synthetic `gaze` data...")
-    for (jpg_path, json_path) in tqdm(zip(jpg_paths, json_paths)):
+
+    for jpg_path in tqdm(jpg_paths):
+      json_path = jpg_path.replace('jpg', 'json')
+
       with open(json_path) as json_f:
         img = imread(jpg_path)
         j = json.loads(json_f.read())
 
-        for key in ["interior_margin_2d"]: #, "caruncle_2d", "iris_2d"]:
-          j[key] = process_json_list(j[key], img)
+        key = "interior_margin_2d"
+        j[key] = process_json_list(j[key], img)
 
-          x_min, x_max = int(min(j[key][:,0])), int(max(j[key][:,0]))
-          y_min, y_max = int(min(j[key][:,1])), int(max(j[key][:,1]))
+        x_min, x_max = int(min(j[key][:,0])), int(max(j[key][:,0]))
+        y_min, y_max = int(min(j[key][:,1])), int(max(j[key][:,1]))
 
         x_center, y_center = (x_min + x_max)/2, (y_min + y_max)/2
-        imwrite(jpg_path.replace(".jpg", "_cropped.png"), img[y_center-42: y_center+42, x_center-70:x_center+70])
+
+        cropped_img = img[y_center-42: y_center+42, x_center-70:x_center+70]
+        img_path = jpg_path.replace(".jpg", "_cropped.png")
+
+        save_array_to_grayscale_image(cropped_img, img_path)
 
 def load(config, data_path, sample_path):
   if not os.path.exists(data_path):

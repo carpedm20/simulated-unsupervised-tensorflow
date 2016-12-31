@@ -26,20 +26,21 @@ class Model(object):
     self._build_steps()
 
   def build_optim(self):
-    self.global_step = tf.Variable(0, name='global_step', trainable=False)
+    self.refiner_step = tf.Variable(0, name='refiner_step', trainable=False)
+    self.discrim_step = tf.Variable(0, name='discrim_step', trainable=False)
 
     if self.task == "generative":
       optim = tf.train.GradientDescentOptimizer(self.learning_rate)
       self.refiner_optim = optim.minimize(
           self.refiner_loss,
-          global_step=self.global_step,
+          global_step=self.refiner_step,
           var_list=self.refiner_vars,
       )
 
       optim = tf.train.GradientDescentOptimizer(self.learning_rate)
       self.discrim_optim = optim.minimize(
           self.discrim_loss,
-          global_step=self.global_step,
+          global_step=self.discrim_step,
           var_list=self.discrim_vars,
       )
     elif self.task == "estimate":
@@ -108,34 +109,60 @@ class Model(object):
       ])
 
   def _build_steps(self):
-    def run(sess, inputs, to_return, input_op, summary_op=None, output_op=None):
-      if summary_op is not None:
-        to_return += [summary_op]
+    def run(sess, inputs, fetch, input_op, step,
+            summary_op=None, summary_writer=None, output_op=None):
+      if summary_writer is not None:
+        fetch['summary'] = summary_op
       if output_op is not None:
-        to_return += [output_op]
-      return sess.run(to_return, feed_dict={ input_op: inputs })
+        fetch['output'] = output_op
 
-    def train_refiner(sess, inputs, with_summary=False, with_output=False):
-      return run(sess, inputs,
-                 [self.refiner_loss, self.refiner_optim], self.x, 
-                 summary_op=self.refiner_summary if with_summary else None,
+      result = sess.run(fetch, feed_dict={ input_op: inputs })
+      if summary_writer is not None:
+        summary_writer.add_summary(result['summary'], train_step)
+        summary_writer.flush()
+      return result
+
+    def train_refiner(sess, inputs, summary_writer=None, with_output=False):
+      fetch = {
+          'loss': self.refiner_loss,
+          'optim': self.refiner_optim,
+          'step': self.refiner_step
+      }
+      return run(sess, inputs, fetch, self.x,
+                 summary_op=self.refiner_summary,
+                 summary_writer=summary_writer,
+                 step=self.refiner_step,
                  output_op=self.R_x if with_output else None)
 
-    def test_refiner(sess, inputs, with_summary=False, with_output=False):
-      return run(sess, inputs,
-                 [self.refiner_loss], self.x,
-                 summary_op=self.refiner_summary if with_summary else None,
+    def test_refiner(sess, inputs, summary_writer=None, with_output=False):
+      fetch = {
+          'loss': self.refiner_loss,
+      }
+      return run(sess, inputs, fetch, self.x,
+                 summary_op=self.refiner_summary,
+                 summary_writer=summary_writer,
+                 step=self.refiner_step,
                  output_op=self.R_x if with_output else None)
 
-    def train_discrim(sess, inputs, with_summary=False):
-      return run(self, sess, inputs,
-                 [self.discrim_loss, self.discrim_optim], self.x,
-                 summary_op=self.discrim_summary if with_summary else None)
+    def train_discrim(sess, inputs, summary_writer=None):
+      fetch = {
+          'loss': self.discrim_loss,
+          'optim': self.discrim_optim,
+          'step': self.discrim_step
+      }
+      return run(sess, inputs, fetch, self.x,
+                 summary_op=self.discrim_summary,
+                 step=self.discrim_step,
+                 summary_writer=summary_writer)
 
-    def test_discrim(sess, inputs, with_summary=False):
-      return run(sess, inputs,
-                 [self.discrim_loss], self.x,
-                 summary_op=self.discrim_summary if with_summary else None)
+    def test_discrim(sess, inputs, summary_writer=None):
+      fetch = {
+          'loss': self.discrim_loss,
+      }
+      return run(sess, inputs, fetch, self.x,
+                 summary_op=self.discrim_summary,
+                 summary_step=self.discrim_step,
+                 summary_writer=summary_writer)
 
     self.train_refiner = train_refiner
     self.test_refiner = test_refiner

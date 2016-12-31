@@ -30,7 +30,3 @@ def prepare_dirs(config):
 
 def get_time():
   return datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-
-def process_json_list(json_list, img):
-  ldmks = [eval(s) for s in json_list]
-  return np.array([(x, img.shape[0]-y, z) for (x,y,z) in ldmks])

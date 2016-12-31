@@ -51,7 +51,7 @@ train_arg.add_argument('--checkpoint_secs', type=int, default=300, help='')
 # Misc
 misc_arg = add_argument_group('Misc')
 misc_arg.add_argument('--log_dir', type=str, default='log')
-misc_arg.add_argument('--sample_dir', type=str, default='sample')
+misc_arg.add_argument('--sample_dir', type=str, default='samples')
 misc_arg.add_argument('--load_path', type=str, default='')
 misc_arg.add_argument('--debug', type=str2bool, default=True)
 
