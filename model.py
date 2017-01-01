@@ -6,6 +6,7 @@ from layers import *
 class Model(object):
   def __init__(self, config):
     self.task = config.task
+    self.debug = config.debug
     self.reg_scale = config.reg_scale
     self.learning_rate = config.learning_rate
 
@@ -19,8 +20,12 @@ class Model(object):
     self.x = tf.placeholder(tf.uint8, [None, None, None, config.input_channel], 'x')
     self.x_history = tf.placeholder(tf.uint8, [None, None, None, config.input_channel], 'x_history')
 
-    self.normalized_x = normalize(tf.image.resize_images(self.x, [config.input_height, config.input_width]))
-    self.normalized_x_history = normalize(tf.image.resize_images(self.x_history, [config.input_height, config.input_width]))
+    resize_dim = [config.input_height, config.input_width]
+    self.resized_x = tf.image.resize_images(self.x, resize_dim)
+    self.resized_x_history = tf.image.resize_images(self.x_history, resize_dim)
+
+    self.normalized_x = normalize(self.resized_x)
+    self.normalized_x_history = normalize(self.resized_x_history)
 
     self._build_model()
     self._build_steps()
@@ -50,6 +55,7 @@ class Model(object):
     with arg_scope([resnet_block, conv2d, max_pool2d],
                    layer_dict=self.layer_dict):
       self.R_x = self._build_refiner()
+      self.denormalized_R_x = denormalize(self.R_x)
 
       self.D_x = self._build_discrim(self.normalized_x)
       self.D_R_x = self._build_discrim(self.R_x)
@@ -72,53 +78,62 @@ class Model(object):
               name="regularization_loss")
 
       self.refiner_loss = tf.reduce_mean(
-          self.realism_loss - self.regularization_loss,
+          self.realism_loss + self.regularization_loss,
           name="refiner_loss")
 
-      self.refiner_summary = tf.summary.merge([
-          tf.summary.scalar("realism_loss", self.realism_loss),
-          tf.summary.scalar("regularization_loss", self.regularization_loss),
-          tf.summary.scalar("loss", self.refiner_loss),
-      ])
+      if self.debug:
+        self.refiner_loss = tf.Print(self.refiner_loss, [self.R_x], "R_x")
+        self.refiner_loss = tf.Print(self.refiner_loss, [self.D_R_x], "D_R_x")
+        self.refiner_loss = tf.Print(self.refiner_loss, [self.normalized_x], "normalized_x")
+        self.refiner_loss = tf.Print(self.refiner_loss, [self.regularization_loss], "reg_loss")
+
+    self.refiner_summary = tf.summary.merge([
+        tf.summary.image("input_images", self.x),
+        tf.summary.image("refined_images", self.denormalized_R_x),
+        tf.summary.scalar("realism_loss", tf.reduce_mean(self.realism_loss)),
+        tf.summary.scalar("regularization_loss", tf.reduce_mean(self.regularization_loss)),
+        tf.summary.scalar("loss", tf.reduce_mean(self.refiner_loss)),
+    ])
 
     # Discriminator loss
     with tf.variable_scope("discriminator"):
-      self.refiner_loss = tf.reduce_sum(
+      self.refiner_d_loss = tf.reduce_sum(
           CE_loss(self.D_R_x, fake_label), [1, 2, 3],
-          name="refiner_loss")
-      self.refiner_history_loss = tf.reduce_sum(
+          name="refiner_d_loss")
+      self.refiner_history_d_loss = tf.reduce_sum(
           CE_loss(self.D_x_history, fake_label), [1, 2, 3],
-          name="refiner_history_loss")
-      self.synthetic_loss = tf.reduce_sum(
+          name="refiner_history_d_loss")
+      self.synthetic_d_loss = tf.reduce_sum(
           CE_loss(self.D_x, real_label), [1, 2, 3],
-          name="synthetic_loss")
+          name="synthetic_d_loss")
 
       self.discrim_loss = tf.reduce_mean(
-          self.refiner_loss + self.synthetic_loss, name="discrim_loss")
+          self.refiner_d_loss + \
+              self.synthetic_d_loss, name="discrim_loss")
 
       self.discrim_loss_with_history = tf.reduce_mean(
-          self.refiner_loss + self.refiner_history_loss + \
-              self.synthetic_loss, name="discrim_loss_with_history")
+          self.refiner_d_loss + self.refiner_history_d_loss + \
+              self.synthetic_d_loss, name="discrim_loss_with_history")
 
       self.discrim_summary = tf.summary.merge([
-          tf.summary.scalar("refiner_loss", self.refiner_loss),
-          tf.summary.scalar("refiner_history_loss", self.refiner_history_loss),
-          tf.summary.scalar("synthetic_loss", self.synthetic_loss),
+          tf.summary.scalar("refiner_d_loss", self.refiner_d_loss),
+          tf.summary.scalar("refiner_history_d_loss", self.refiner_history_d_loss),
+          tf.summary.scalar("synthetic_d_loss", self.synthetic_d_loss),
           tf.summary.scalar("discrim_loss", self.discrim_loss),
           tf.summary.scalar("discrim_loss_with_history", self.discrim_loss_with_history),
       ])
 
   def _build_steps(self):
-    def run(sess, inputs, fetch, input_op, step,
-            summary_op=None, summary_writer=None, output_op=None):
+    def run(sess, inputs, fetch, input_op,
+            summary_op, summary_writer, output_op=None):
       if summary_writer is not None:
         fetch['summary'] = summary_op
       if output_op is not None:
         fetch['output'] = output_op
 
       result = sess.run(fetch, feed_dict={ input_op: inputs })
-      if summary_writer is not None:
-        summary_writer.add_summary(result['summary'], train_step)
+      if result.has_key('summary'):
+        summary_writer.add_summary(result['summary'], result['step'])
         summary_writer.flush()
       return result
 
@@ -126,43 +141,37 @@ class Model(object):
       fetch = {
           'loss': self.refiner_loss,
           'optim': self.refiner_optim,
-          'step': self.refiner_step
+          'step': self.refiner_step,
       }
       return run(sess, inputs, fetch, self.x,
-                 summary_op=self.refiner_summary,
-                 summary_writer=summary_writer,
-                 step=self.refiner_step,
+                 self.refiner_summary, summary_writer,
                  output_op=self.R_x if with_output else None)
 
     def test_refiner(sess, inputs, summary_writer=None, with_output=False):
       fetch = {
           'loss': self.refiner_loss,
+          'step': self.refiner_step,
       }
       return run(sess, inputs, fetch, self.x,
-                 summary_op=self.refiner_summary,
-                 summary_writer=summary_writer,
-                 step=self.refiner_step,
+                 self.refiner_summary, summary_writer,
                  output_op=self.R_x if with_output else None)
 
     def train_discrim(sess, inputs, summary_writer=None):
       fetch = {
           'loss': self.discrim_loss,
           'optim': self.discrim_optim,
-          'step': self.discrim_step
+          'step': self.discrim_step,
       }
       return run(sess, inputs, fetch, self.x,
-                 summary_op=self.discrim_summary,
-                 step=self.discrim_step,
-                 summary_writer=summary_writer)
+                 self.discrim_summary, summary_writer)
 
     def test_discrim(sess, inputs, summary_writer=None):
       fetch = {
           'loss': self.discrim_loss,
+          'step': self.discrim_step,
       }
       return run(sess, inputs, fetch, self.x,
-                 summary_op=self.discrim_summary,
-                 summary_step=self.discrim_step,
-                 summary_writer=summary_writer)
+                 self.discrim_summary, summary_writer=summary_writer)
 
     self.train_refiner = train_refiner
     self.test_refiner = test_refiner

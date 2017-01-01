@@ -1,5 +1,4 @@
-from tqdm import tqdm
-
+from tqdm import trange
 import tensorflow as tf
 from tensorflow.contrib.framework.python.ops import arg_scope
 
@@ -10,8 +9,12 @@ import data.hand_data as hand_data
 
 class Trainer(object):
   def __init__(self, config, rng):
+    self.config = config
     self.task = config.task
     self.model_dir = config.model_dir
+
+    self.log_step = config.log_step
+    self.max_step = config.max_step
 
     self.K_d = config.K_d
     self.K_g = config.K_g
@@ -52,20 +55,33 @@ class Trainer(object):
     sess = sv.prepare_or_wait_for_session(config=config)
 
     print("[*] Training starts...")
+    summary_writer = None
 
-    for k in xrange(self.initial_K_g):
-      res = self.model.train_refiner(
-          sess, self.data_loader.next(), with_output=True)
+    for k in trange(self.initial_K_g, desc="Train refiner"):
+      data = self.data_loader.next()
+      res = self.model.train_refiner(sess, data,
+                                     summary_writer, with_output=True)
+      summary_writer = self._get_summary_writer(res)
+      if k == 10:
+        import ipdb; ipdb.set_trace() 
+        # self.model.R_x.eval({self.model.x: self.data_loader.next()}, session=sess)
+        x = 123
 
-    for k in xrange(self.initial_K_d):
-      pass
+    for k in trange(self.initial_K_d, desc="Train discrim"):
+      res = self.model.train_discrim(sess, self.data_loader.next(),
+                                     summary_writer, with_output=True)
+      summary_writer = self._get_summary_writer(res)
 
-    for step in xrange(self.max_step):
+    for step in trange(self.max_step, desc="Train both"):
       for k in xrange(self.K_g):
-        pass
+        res = self.model.train_refiner(sess, self.data_loader.next(),
+                                      summary_writer, with_output=True)
+        summary_writer = self._get_summary_writer(res)
 
       for k in xrange(self.K_d):
-        pass
+        res = self.model.train_discrim(sess, self.data_loader.next(),
+                                      summary_writer, with_output=True)
+        summary_writer = self._get_summary_writer(res)
 
   def test(self):
     pass
@@ -90,3 +106,9 @@ class Trainer(object):
           tf.placeholder('float32', None, name=tag.replace(' ', '_'))
       self.summary_ops[tag] = \
           tf.summary.scalar(tag, self.summary_placeholders[tag])
+
+  def _get_summary_writer(self, result):
+    if result['step'] % self.log_step == 0:
+      return self.summary_writer
+    else:
+      return None

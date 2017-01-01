@@ -8,7 +8,7 @@ TensorFlow implementation of [Learning from Simulated and Unsupervised Images th
 ## Requirements
 
 - Python 2.7
-- [TensorFlow](https://www.tensorflow.org/) 0.12.0+
+- [TensorFlow](https://www.tensorflow.org/) 0.12.0
 - [SciPy](http://www.scipy.org/install.html)
 - [pillow](https://github.com/python-pillow/Pillow)
 - [tqdm](https://github.com/tqdm/tqdm)
