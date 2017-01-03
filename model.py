@@ -78,13 +78,14 @@ class Model(object):
     with tf.variable_scope("refiner"):
       self.realism_loss = tf.reduce_sum(
           SE_loss(self.D_R_x_logits, real_label), [1, 2], name="realism_loss")
-      self.regularization_loss = 0
-      #    self.reg_scale * tf.reduce_sum(
-      #        self.R_x - self.normalized_x, [1, 2, 3],
-      #        name="regularization_loss")
+      #self.regularization_loss = 0
+      self.regularization_loss = \
+          self.reg_scale * tf.reduce_sum(
+              tf.abs(self.R_x - self.normalized_x), [1, 2, 3],
+              name="regularization_loss")
 
       self.refiner_loss = tf.reduce_mean(
-          self.realism_loss, #+ self.regularization_loss,
+          self.realism_loss + self.regularization_loss,
           name="refiner_loss")
 
       if self.debug:
@@ -162,22 +163,24 @@ class Model(object):
                  self.refiner_summary, summary_writer,
                  output_op=self.R_x if with_output else None)
 
-    def train_discrim(sess, inputs, summary_writer=None):
+    def train_discrim(sess, inputs, summary_writer=None, with_output=False):
       fetch = {
           'loss': self.discrim_loss,
           'optim': self.discrim_optim,
           'step': self.discrim_step,
       }
       return run(sess, inputs, fetch, self.x,
-                 self.discrim_summary, summary_writer)
+                 self.discrim_summary, summary_writer,
+                 output_op=self.D_R_x if with_output else None)
 
-    def test_discrim(sess, inputs, summary_writer=None):
+    def test_discrim(sess, inputs, summary_writer=None, with_output=False):
       fetch = {
           'loss': self.discrim_loss,
           'step': self.discrim_step,
       }
       return run(sess, inputs, fetch, self.x,
-                 self.discrim_summary, summary_writer=summary_writer)
+                 self.discrim_summary, summary_writer,
+                 output_op=self.D_R_x if with_output else None)
 
     self.train_refiner = train_refiner
     self.test_refiner = test_refiner

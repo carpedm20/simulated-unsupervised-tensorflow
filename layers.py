@@ -43,7 +43,7 @@ def conv2d(inputs, num_outputs, kernel_size, stride,
            layer_dict={}, activation_fn=None,
            weights_initializer=tf.random_normal_initializer(0, 0.001),
            scope=None, name="", reuse=False, **kargv):
-  print tf.random_normal_initializer(0, 0.001)
+  print weights_initializer
   if True:
     outputs = slim.conv2d(
         inputs, num_outputs, kernel_size,
