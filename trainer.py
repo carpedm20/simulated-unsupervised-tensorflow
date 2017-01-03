@@ -62,10 +62,10 @@ class Trainer(object):
       res = self.model.train_refiner(sess, data,
                                      summary_writer, with_output=True)
       summary_writer = self._get_summary_writer(res)
-      if k == 10:
-        import ipdb; ipdb.set_trace() 
-        # self.model.R_x.eval({self.model.x: self.data_loader.next()}, session=sess)
-        x = 123
+      import ipdb; ipdb.set_trace() 
+      # self.model.R_x.eval({self.model.x: data)}, session=sess)
+      # self.model.layer_dict['refiner/resnet/resnet_5'].eval({self.model.x: data},session=sess).max()
+      x = 123
 
     for k in trange(self.initial_K_d, desc="Train discrim"):
       res = self.model.train_discrim(sess, self.data_loader.next(),

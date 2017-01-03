@@ -58,8 +58,8 @@ class Model(object):
       self.denormalized_R_x = denormalize(self.R_x)
 
       self.D_x = self._build_discrim(self.normalized_x)
-      self.D_R_x = self._build_discrim(self.R_x)
-      self.D_x_history = self._build_discrim(self.normalized_x_history)
+      self.D_R_x = self._build_discrim(self.R_x, reuse=True)
+      self.D_x_history = self._build_discrim(self.normalized_x_history, reuse=True)
 
       #self.estimate_outputs = self._build_estimation_network()
     self._build_loss()
@@ -186,15 +186,15 @@ class Model(object):
       self.refiner_vars = tf.contrib.framework.get_variables(sc)
     return layer
 
-  def _build_discrim(self, layer):
+  def _build_discrim(self, layer, reuse=False):
     with tf.variable_scope("discriminator") as sc:
-      layer = conv2d(layer, 96, 3, 2, scope="conv_1")
-      layer = conv2d(layer, 64, 3, 2, scope="conv_2")
+      layer = conv2d(layer, 96, 3, 2, scope="conv_1", reuse=reuse)
+      layer = conv2d(layer, 64, 3, 2, scope="conv_2", reuse=reuse)
       layer = max_pool2d(layer, 3, 1, scope="max_1")
-      layer = conv2d(layer, 32, 3, 1, scope="conv_3")
-      layer = conv2d(layer, 32, 1, 1, scope="conv_4")
+      layer = conv2d(layer, 32, 3, 1, scope="conv_3", reuse=reuse)
+      layer = conv2d(layer, 32, 1, 1, scope="conv_4", reuse=reuse)
       layer = conv2d(layer, 2, 1, 1, 
-          activation_fn=tf.nn.softmax, scope="conv_5")
+          activation_fn=tf.nn.softmax, scope="conv_5", reuse=reuse)
       self.discrim_vars = tf.contrib.framework.get_variables(sc)
     return layer
 
