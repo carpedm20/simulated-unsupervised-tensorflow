@@ -2,7 +2,10 @@ import tensorflow as tf
 import tensorflow.contrib.slim as slim
 from tensorflow.contrib.framework import add_arg_scope
 
-CE_loss = tf.nn.sigmoid_cross_entropy_with_logits
+SE_loss = tf.nn.softmax_cross_entropy_with_logits
+
+def int_shape(x):
+  return list(map(int, x.get_shape()[1: ]))
 
 def normalize(layer):
   return tf.to_float(layer) / 255
@@ -37,13 +40,17 @@ def repeat(inputs, repetitions, layer, layer_dict={}, **kargv):
 
 @add_arg_scope
 def conv2d(inputs, num_outputs, kernel_size, stride,
-           layer_dict={}, activation_fn=None, scope=None, reuse=False, **kargv):
+           layer_dict={}, activation_fn=None,
+           weights_initializer=tf.random_normal_initializer(0, 0.001),
+           scope=None, name="", reuse=False, **kargv):
+  print tf.random_normal_initializer(0, 0.001)
   if True:
     outputs = slim.conv2d(
         inputs, num_outputs, kernel_size,
         stride, activation_fn=activation_fn, 
         #weights_initializer=tf.contrib.layers.xavier_initializer(),
-        weights_initializer=tf.random_normal_initializer(0, 0.0001),
+        #weights_initializer=tf.random_normal_initializer(0, 0.001),
+        weights_initializer=weights_initializer,
         biases_initializer=tf.zeros_initializer, **kargv)
   else:
     with tf.variable_scope(scope, reuse=reuse):
@@ -58,11 +65,16 @@ def conv2d(inputs, num_outputs, kernel_size, stride,
       outputs = tf.nn.bias_add(hidden, bias)
       if activation_fn:
         outputs = activation_fn(outputs)
+  if name:
+    scope = "{}/{}".format(name, scope)
   _update_dict(layer_dict, scope, outputs)
   return outputs
 
 @add_arg_scope
-def max_pool2d(inputs, kernel_size=[3, 3], stride=[1, 1], layer_dict={}, **kargv):
+def max_pool2d(inputs, kernel_size=[3, 3], stride=[1, 1],
+               layer_dict={}, scope=None, name="", **kargv):
   outputs = slim.max_pool2d(inputs, kernel_size, stride, **kargv)
-  _update_dict(layer_dict, kargv['scope'], outputs)
+  if name:
+    scope = "{}/{}".format(name, scope)
+  _update_dict(layer_dict, scope, outputs)
   return outputs

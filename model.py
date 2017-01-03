@@ -57,28 +57,34 @@ class Model(object):
       self.R_x = self._build_refiner()
       self.denormalized_R_x = denormalize(self.R_x)
 
-      self.D_x = self._build_discrim(self.normalized_x)
-      self.D_R_x = self._build_discrim(self.R_x, reuse=True)
-      self.D_x_history = self._build_discrim(self.normalized_x_history, reuse=True)
+      self.D_x, self.D_x_logits = \
+          self._build_discrim(self.normalized_x, name="D_x")
+      self.D_R_x, self.D_R_x_logits = \
+          self._build_discrim(self.R_x, name="D_R_x", reuse=True)
+      self.D_x_history, self.D_x_history_logits = \
+          self._build_discrim(self.normalized_x_history, name="D_x_history", reuse=True)
 
       #self.estimate_outputs = self._build_estimation_network()
     self._build_loss()
 
   def _build_loss(self):
     # Refiner loss
-    real_label = tf.ones_like(self.D_R_x)
-    fake_label = tf.zeros_like(self.D_R_x)
+    zeros = tf.zeros_like(self.D_R_x)[:,:,:,0]
+    ones = tf.ones_like(self.D_R_x)[:,:,:,0]
+
+    fake_label = tf.stack([zeros, ones], axis=-1)
+    real_label = tf.stack([ones, zeros], axis=-1)
 
     with tf.variable_scope("refiner"):
       self.realism_loss = tf.reduce_sum(
-          CE_loss(self.D_R_x, real_label), [1, 2, 3], name="realism_loss")
-      self.regularization_loss = \
-          self.reg_scale * tf.reduce_sum(
-              self.R_x - self.normalized_x, [1, 2, 3],
-              name="regularization_loss")
+          SE_loss(self.D_R_x_logits, real_label), [1, 2], name="realism_loss")
+      self.regularization_loss = 0
+      #    self.reg_scale * tf.reduce_sum(
+      #        self.R_x - self.normalized_x, [1, 2, 3],
+      #        name="regularization_loss")
 
       self.refiner_loss = tf.reduce_mean(
-          self.realism_loss + self.regularization_loss,
+          self.realism_loss, #+ self.regularization_loss,
           name="refiner_loss")
 
       if self.debug:
@@ -98,13 +104,13 @@ class Model(object):
     # Discriminator loss
     with tf.variable_scope("discriminator"):
       self.refiner_d_loss = tf.reduce_sum(
-          CE_loss(self.D_R_x, fake_label), [1, 2, 3],
+          SE_loss(self.D_R_x_logits, fake_label), [1, 2],
           name="refiner_d_loss")
       self.refiner_history_d_loss = tf.reduce_sum(
-          CE_loss(self.D_x_history, fake_label), [1, 2, 3],
+          SE_loss(self.D_x_history_logits, fake_label), [1, 2],
           name="refiner_history_d_loss")
       self.synthetic_d_loss = tf.reduce_sum(
-          CE_loss(self.D_x, real_label), [1, 2, 3],
+          SE_loss(self.D_x_logits, real_label), [1, 2],
           name="synthetic_d_loss")
 
       self.discrim_loss = tf.reduce_mean(
@@ -182,21 +188,22 @@ class Model(object):
     layer = self.normalized_x
     with tf.variable_scope("refiner") as sc:
       layer = repeat(layer, 5, resnet_block, scope="resnet")
-      layer = conv2d(layer, 1, 1, 1, scope="conv_1")
+      output = conv2d(layer, 1, 1, 1, scope="conv_1")
       self.refiner_vars = tf.contrib.framework.get_variables(sc)
-    return layer
+    return output 
 
-  def _build_discrim(self, layer, reuse=False):
+  def _build_discrim(self, layer, name, reuse=False):
     with tf.variable_scope("discriminator") as sc:
-      layer = conv2d(layer, 96, 3, 2, scope="conv_1", reuse=reuse)
-      layer = conv2d(layer, 64, 3, 2, scope="conv_2", reuse=reuse)
-      layer = max_pool2d(layer, 3, 1, scope="max_1")
-      layer = conv2d(layer, 32, 3, 1, scope="conv_3", reuse=reuse)
-      layer = conv2d(layer, 32, 1, 1, scope="conv_4", reuse=reuse)
-      layer = conv2d(layer, 2, 1, 1, 
-          activation_fn=tf.nn.softmax, scope="conv_5", reuse=reuse)
-      self.discrim_vars = tf.contrib.framework.get_variables(sc)
-    return layer
+      with arg_scope([conv2d], weights_initializer=tf.contrib.layers.xavier_initializer()):
+        layer = conv2d(layer, 96, 3, 2, scope="conv_1", name=name, reuse=reuse)
+        layer = conv2d(layer, 64, 3, 2, scope="conv_2", name=name, reuse=reuse)
+        layer = max_pool2d(layer, 3, 1, scope="max_1", name=name)
+        layer = conv2d(layer, 32, 3, 1, scope="conv_3", name=name, reuse=reuse)
+        layer = conv2d(layer, 32, 1, 1, scope="conv_4", name=name, reuse=reuse)
+        logits = conv2d(layer, 2, 1, 1, scope="conv_5", name=name, reuse=reuse)
+        output = tf.nn.softmax(logits, name="softmax")
+        self.discrim_vars = tf.contrib.framework.get_variables(sc)
+    return output, logits
 
   def _build_estimation_network(self):
     layer = self.normalized_x
