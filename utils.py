@@ -2,6 +2,8 @@ import os
 import numpy as np
 from datetime import datetime
 
+import tensorflow as tf
+
 try:
   import scipy.misc
   imread = scipy.misc.imread
@@ -30,3 +32,16 @@ def prepare_dirs(config):
 
 def get_time():
   return datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+
+def show_all_variables():
+  print("")
+  total_count = 0
+  for idx, op in enumerate(tf.trainable_variables()):
+    shape = op.get_shape()
+    count = np.prod(shape)
+    print("[%2d] %s %s = %s" % (idx, op.name, shape, "{:,}".format(int(count))))
+    total_count += int(count)
+  print("=" * 40)
+  print("[Total] variable size: %s" % "{:,}".format(total_count))
+  print("=" * 40)
+  print("")

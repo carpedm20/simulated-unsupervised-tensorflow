@@ -2,16 +2,16 @@ import tensorflow as tf
 import tensorflow.contrib.slim as slim
 from tensorflow.contrib.framework import add_arg_scope
 
-SE_loss = tf.nn.softmax_cross_entropy_with_logits
+SE_loss = tf.nn.sparse_softmax_cross_entropy_with_logits
 
 def int_shape(x):
   return list(map(int, x.get_shape()[1: ]))
 
 def normalize(layer):
-  return tf.to_float(layer) / 255
+  return layer/127.5 - 1.
 
 def denormalize(layer):
-  return tf.cast(layer * 255, tf.uint8)
+  return (layer + 1.)/2.
 
 def _update_dict(layer_dict, scope, layer):
   name = "{}/{}".format(tf.get_variable_scope().name, scope)
@@ -41,17 +41,15 @@ def repeat(inputs, repetitions, layer, layer_dict={}, **kargv):
 @add_arg_scope
 def conv2d(inputs, num_outputs, kernel_size, stride,
            layer_dict={}, activation_fn=None,
-           weights_initializer=tf.random_normal_initializer(0, 0.001),
+           #weights_initializer=tf.random_normal_initializer(0, 0.001),
+           weights_initializer=tf.contrib.layers.xavier_initializer(),
            scope=None, name="", reuse=False, **kargv):
-  print weights_initializer
   if True:
     outputs = slim.conv2d(
         inputs, num_outputs, kernel_size,
         stride, activation_fn=activation_fn, 
-        #weights_initializer=tf.contrib.layers.xavier_initializer(),
-        #weights_initializer=tf.random_normal_initializer(0, 0.001),
         weights_initializer=weights_initializer,
-        biases_initializer=tf.zeros_initializer, **kargv)
+        biases_initializer=tf.zeros_initializer, scope=scope, **kargv)
   else:
     with tf.variable_scope(scope, reuse=reuse):
       if type(kernel_size) == int:
@@ -77,4 +75,10 @@ def max_pool2d(inputs, kernel_size=[3, 3], stride=[1, 1],
   if name:
     scope = "{}/{}".format(name, scope)
   _update_dict(layer_dict, scope, outputs)
+  return outputs
+
+@add_arg_scope
+def tanh(inputs, layer_dict={}, name=None, **kargv):
+  outputs = tf.nn.tanh(inputs, name=name, **kargv)
+  _update_dict(layer_dict, name, outputs)
   return outputs

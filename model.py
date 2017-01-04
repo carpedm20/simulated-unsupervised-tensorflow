@@ -2,6 +2,7 @@ import tensorflow as tf
 from tensorflow.contrib.framework import arg_scope
 
 from layers import *
+from utils import show_all_variables
 
 class Model(object):
   def __init__(self, config):
@@ -17,18 +18,24 @@ class Model(object):
         config.input_width, config.input_channel,
     ]
 
-    self.x = tf.placeholder(tf.uint8, [None, None, None, config.input_channel], 'x')
-    self.x_history = tf.placeholder(tf.uint8, [None, None, None, config.input_channel], 'x_history')
+    self.x = tf.placeholder(
+        tf.uint8, [None, None, None, config.input_channel], 'x')
+    self.synthetic_x = tf.placeholder(
+        tf.uint8, [None, None, None, config.input_channel], 'synthetic_x')
+    self.R_x_history = tf.placeholder(
+        tf.float32, [None, None, None, config.input_channel], 'R_x_history')
 
     resize_dim = [config.input_height, config.input_width]
     self.resized_x = tf.image.resize_images(self.x, resize_dim)
-    self.resized_x_history = tf.image.resize_images(self.x_history, resize_dim)
+    self.resized_synthetic_x = tf.image.resize_images(self.synthetic_x, resize_dim)
 
     self.normalized_x = normalize(self.resized_x)
-    self.normalized_x_history = normalize(self.resized_x_history)
+    self.normalized_synthetic_x = normalize(self.resized_synthetic_x)
 
     self._build_model()
     self._build_steps()
+
+    show_all_variables()
 
   def build_optim(self):
     self.refiner_step = tf.Variable(0, name='refiner_step', trainable=False)
@@ -52,36 +59,39 @@ class Model(object):
       raise Exception("[!] Not implemented yet")
 
   def _build_model(self):
-    with arg_scope([resnet_block, conv2d, max_pool2d],
+    with arg_scope([resnet_block, conv2d, max_pool2d, tanh],
                    layer_dict=self.layer_dict):
-      self.R_x = self._build_refiner()
+      self.R_x = self._build_refiner(self.normalized_synthetic_x)
       self.denormalized_R_x = denormalize(self.R_x)
 
       self.D_x, self.D_x_logits = \
           self._build_discrim(self.normalized_x, name="D_x")
       self.D_R_x, self.D_R_x_logits = \
           self._build_discrim(self.R_x, name="D_R_x", reuse=True)
-      self.D_x_history, self.D_x_history_logits = \
-          self._build_discrim(self.normalized_x_history, name="D_x_history", reuse=True)
+      self.D_R_x_history, self.D_R_x_history_logits = \
+          self._build_discrim(self.R_x_history,
+                              name="D_R_x_history", reuse=True)
 
       #self.estimate_outputs = self._build_estimation_network()
     self._build_loss()
 
   def _build_loss(self):
     # Refiner loss
-    zeros = tf.zeros_like(self.D_R_x)[:,:,:,0]
-    ones = tf.ones_like(self.D_R_x)[:,:,:,0]
+    #zeros = tf.zeros_like(self.D_R_x)[:,:,:,0]
+    #ones = tf.ones_like(self.D_R_x)[:,:,:,0]
 
-    fake_label = tf.stack([zeros, ones], axis=-1)
-    real_label = tf.stack([ones, zeros], axis=-1)
+    #fake_label = tf.stack([zeros, ones], axis=-1)
+    #real_label = tf.stack([ones, zeros], axis=-1)
 
-    with tf.variable_scope("refiner"):
+    fake_label = tf.zeros_like(self.D_R_x, dtype=tf.int32)[:,:,:,0]
+    real_label = tf.ones_like(self.D_x, dtype=tf.int32)[:,:,:,0]
+
+    with tf.name_scope("refiner"):
       self.realism_loss = tf.reduce_sum(
           SE_loss(self.D_R_x_logits, real_label), [1, 2], name="realism_loss")
-      #self.regularization_loss = 0
       self.regularization_loss = \
           self.reg_scale * tf.reduce_sum(
-              tf.abs(self.R_x - self.normalized_x), [1, 2, 3],
+              tf.abs(self.R_x - self.synthetic_x), [1, 2, 3],
               name="regularization_loss")
 
       self.refiner_loss = tf.reduce_mean(
@@ -89,17 +99,24 @@ class Model(object):
           name="refiner_loss")
 
       if self.debug:
-        self.refiner_loss = tf.Print(self.refiner_loss, [self.R_x], "R_x")
-        self.refiner_loss = tf.Print(self.refiner_loss, [self.D_R_x], "D_R_x")
-        self.refiner_loss = tf.Print(self.refiner_loss, [self.normalized_x], "normalized_x")
-        self.refiner_loss = tf.Print(self.refiner_loss, [self.regularization_loss], "reg_loss")
+        self.refiner_loss = tf.Print(
+            self.refiner_loss, [self.R_x], "R_x")
+        self.refiner_loss = tf.Print(
+            self.refiner_loss, [self.D_R_x], "D_R_x")
+        self.refiner_loss = tf.Print(
+            self.refiner_loss,
+            [self.normalized_synthetic_x], "normalized_synthetic_x")
+        self.refiner_loss = tf.Print(
+            self.refiner_loss, [self.denormalized_R_x], "denormalized_x")
+        self.refiner_loss = tf.Print(
+            self.refiner_loss, [self.regularization_loss], "reg_loss")
 
     self.refiner_summary = tf.summary.merge([
-        tf.summary.image("input_images", self.x),
+        tf.summary.image("input_images", self.synthetic_x),
         tf.summary.image("refined_images", self.denormalized_R_x),
-        tf.summary.scalar("realism_loss", tf.reduce_mean(self.realism_loss)),
-        tf.summary.scalar("regularization_loss", tf.reduce_mean(self.regularization_loss)),
-        tf.summary.scalar("loss", tf.reduce_mean(self.refiner_loss)),
+        tf.summary.scalar("refiner/realism_loss", tf.reduce_mean(self.realism_loss)),
+        tf.summary.scalar("refiner/regularization_loss", tf.reduce_mean(self.regularization_loss)),
+        tf.summary.scalar("refiner/loss", tf.reduce_mean(self.refiner_loss)),
     ])
 
     # Discriminator loss
@@ -107,9 +124,6 @@ class Model(object):
       self.refiner_d_loss = tf.reduce_sum(
           SE_loss(self.D_R_x_logits, fake_label), [1, 2],
           name="refiner_d_loss")
-      self.refiner_history_d_loss = tf.reduce_sum(
-          SE_loss(self.D_x_history_logits, fake_label), [1, 2],
-          name="refiner_history_d_loss")
       self.synthetic_d_loss = tf.reduce_sum(
           SE_loss(self.D_x_logits, real_label), [1, 2],
           name="synthetic_d_loss")
@@ -118,15 +132,27 @@ class Model(object):
           self.refiner_d_loss + \
               self.synthetic_d_loss, name="discrim_loss")
 
+      # with history
+      self.refiner_d_loss_with_history = tf.reduce_sum(
+          SE_loss(self.D_R_x_history_logits, fake_label), [1, 2],
+          name="refiner_d_loss_with_history")
       self.discrim_loss_with_history = tf.reduce_mean(
-          self.refiner_d_loss + self.refiner_history_d_loss + \
+          tf.concat_v2(self.refiner_d_loss, self.refiner_d_loss_with_history) + \
               self.synthetic_d_loss, name="discrim_loss_with_history")
 
+      if self.debug:
+        self.discrim_loss = tf.Print(self.discrim_loss, [self.refiner_d_loss], "refiner_d_loss")
+        self.discrim_loss = tf.Print(self.discrim_loss, [self.synthetic_d_loss], "synthetic_d_loss")
+        self.discrim_loss = tf.Print(self.discrim_loss, [self.discrim_loss], "discrim_loss")
+
       self.discrim_summary = tf.summary.merge([
-          tf.summary.scalar("refiner_d_loss", self.refiner_d_loss),
-          tf.summary.scalar("refiner_history_d_loss", self.refiner_history_d_loss),
+          tf.summary.scalar("synthetic_d_loss", tf.reduce_mean(self.synthetic_d_loss)),
+          tf.summary.scalar("refiner_d_loss", tf.reduce_mean(self.refiner_d_loss)),
+          tf.summary.scalar("discrim_loss", tf.reduce_mean(self.discrim_loss)),
+      ])
+      self.discrim_summary_with_history = tf.summary.merge([
           tf.summary.scalar("synthetic_d_loss", self.synthetic_d_loss),
-          tf.summary.scalar("discrim_loss", self.discrim_loss),
+          tf.summary.scalar("refiner_d_loss_with_history", self.refiner_d_loss_with_history),
           tf.summary.scalar("discrim_loss_with_history", self.discrim_loss_with_history),
       ])
 
@@ -150,7 +176,7 @@ class Model(object):
           'optim': self.refiner_optim,
           'step': self.refiner_step,
       }
-      return run(sess, inputs, fetch, self.x,
+      return run(sess, inputs, fetch, self.synthetic_x,
                  self.refiner_summary, summary_writer,
                  output_op=self.R_x if with_output else None)
 
@@ -159,27 +185,31 @@ class Model(object):
           'loss': self.refiner_loss,
           'step': self.refiner_step,
       }
-      return run(sess, inputs, fetch, self.x,
+      return run(sess, inputs, fetch, self.synthetic_x,
                  self.refiner_summary, summary_writer,
                  output_op=self.R_x if with_output else None)
 
-    def train_discrim(sess, inputs, summary_writer=None, with_output=False):
+    def train_discrim(sess, inputs, summary_writer=None,
+                      with_history=False, with_output=False):
       fetch = {
           'loss': self.discrim_loss,
           'optim': self.discrim_optim,
           'step': self.discrim_step,
       }
       return run(sess, inputs, fetch, self.x,
-                 self.discrim_summary, summary_writer,
+                 self.discrim_summary_with_history if with_history \
+                     else self.discrim_summary, summary_writer,
                  output_op=self.D_R_x if with_output else None)
 
-    def test_discrim(sess, inputs, summary_writer=None, with_output=False):
+    def test_discrim(sess, inputs, summary_writer=None,
+                     with_history=False, with_output=False):
       fetch = {
           'loss': self.discrim_loss,
           'step': self.discrim_step,
       }
       return run(sess, inputs, fetch, self.x,
-                 self.discrim_summary, summary_writer,
+                 self.discrim_summary_with_history if with_history \
+                     else self.discrim_summary, summary_writer,
                  output_op=self.D_R_x if with_output else None)
 
     self.train_refiner = train_refiner
@@ -187,25 +217,25 @@ class Model(object):
     self.train_discrim = train_discrim
     self.test_discrim = test_discrim
 
-  def _build_refiner(self):
-    layer = self.normalized_x
+  def _build_refiner(self, layer):
     with tf.variable_scope("refiner") as sc:
-      layer = repeat(layer, 5, resnet_block, scope="resnet")
-      output = conv2d(layer, 1, 1, 1, scope="conv_1")
+      layer = repeat(layer, 4, resnet_block, scope="resnet")
+      layer = conv2d(layer, 1, 1, 1, 
+                     activation_fn=None, scope="conv_1")
+      output = tanh(layer, name="tanh")
       self.refiner_vars = tf.contrib.framework.get_variables(sc)
     return output 
 
   def _build_discrim(self, layer, name, reuse=False):
     with tf.variable_scope("discriminator") as sc:
-      with arg_scope([conv2d], weights_initializer=tf.contrib.layers.xavier_initializer()):
-        layer = conv2d(layer, 96, 3, 2, scope="conv_1", name=name, reuse=reuse)
-        layer = conv2d(layer, 64, 3, 2, scope="conv_2", name=name, reuse=reuse)
-        layer = max_pool2d(layer, 3, 1, scope="max_1", name=name)
-        layer = conv2d(layer, 32, 3, 1, scope="conv_3", name=name, reuse=reuse)
-        layer = conv2d(layer, 32, 1, 1, scope="conv_4", name=name, reuse=reuse)
-        logits = conv2d(layer, 2, 1, 1, scope="conv_5", name=name, reuse=reuse)
-        output = tf.nn.softmax(logits, name="softmax")
-        self.discrim_vars = tf.contrib.framework.get_variables(sc)
+      layer = conv2d(layer, 96, 3, 2, scope="conv_1", name=name, reuse=reuse)
+      layer = conv2d(layer, 64, 3, 2, scope="conv_2", name=name, reuse=reuse)
+      layer = max_pool2d(layer, 3, 1, scope="max_1", name=name)
+      layer = conv2d(layer, 32, 3, 1, scope="conv_3", name=name, reuse=reuse)
+      layer = conv2d(layer, 32, 1, 1, scope="conv_4", name=name, reuse=reuse)
+      logits = conv2d(layer, 2, 1, 1, scope="conv_5", name=name, reuse=reuse)
+      output = tf.nn.softmax(logits, name="softmax")
+      self.discrim_vars = tf.contrib.framework.get_variables(sc)
     return output, logits
 
   def _build_estimation_network(self):

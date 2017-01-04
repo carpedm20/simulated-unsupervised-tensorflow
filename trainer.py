@@ -50,26 +50,27 @@ class Trainer(object):
                              global_step=self.model.discrim_step)
 
     config = tf.ConfigProto(allow_soft_placement=True)
-    config.gpu_options.allow_growth=True
+    config.gpu_options.allow_growth = True
 
     sess = sv.prepare_or_wait_for_session(config=config)
 
     print("[*] Training starts...")
     summary_writer = None
 
-    for k in trange(self.initial_K_d, desc="Train discrim"):
-      res = self.model.train_discrim(sess, self.data_loader.next(),
-                                     summary_writer, with_output=False)
-      summary_writer = self._get_summary_writer(res)
-
     for k in trange(self.initial_K_g, desc="Train refiner"):
       data = self.data_loader.next()
       res = self.model.train_refiner(sess, data,
                                      summary_writer, with_output=True)
       summary_writer = self._get_summary_writer(res)
-      # import ipdb; ipdb.set_trace() 
-      # self.model.R_x.eval({self.model.x: data)}, session=sess)
-      # self.model.layer_dict['refiner/resnet/resnet_5'].eval({self.model.x: data},session=sess).max()
+      # self.model.R_x.eval({self.model.x: data}, session=sess)
+      # self.model.layer_dict['refiner/resnet/resnet_4'].eval({self.model.x: data},session=sess).max()
+      # self.model.layer_dict['refiner/conv_1'].eval({self.model.x: data},session=sess).min()
+      # self.model.R_x.eval({self.model.x: data},session=sess).min()
+
+    for k in trange(self.initial_K_d, desc="Train discrim"):
+      res = self.model.train_discrim(sess, self.data_loader.next(),
+                                     summary_writer, with_output=False)
+      summary_writer = self._get_summary_writer(res)
 
     for step in trange(self.max_step, desc="Train both"):
       for k in xrange(self.K_g):
