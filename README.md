@@ -55,7 +55,7 @@ To test with an existing model:
 
 (in progress)
 
-![model](./assets/results_0104.png)
+![result_0104](./assets/results_0104.png)
 
 
 ## Author
