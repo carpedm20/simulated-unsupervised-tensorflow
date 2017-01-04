@@ -58,26 +58,43 @@ class Trainer(object):
     summary_writer = None
 
     for k in trange(self.initial_K_g, desc="Train refiner"):
-      res = self.model.train_refiner(sess, None,
-                                     summary_writer, with_output=True)
+      feed_dict = {
+        self.model.synthetic_batch_size: self.data_loader.batch_size,
+      }
+      res = self.model.train_refiner(
+          sess, feed_dict, summary_writer, with_output=True)
       self.history_buffer.push(res['output'])
       summary_writer = self._get_summary_writer(res)
 
     for k in trange(self.initial_K_d, desc="Train discrim"):
-      res = self.model.train_discrim(sess, self.data_loader.next(),
-                                     summary_writer, with_output=False)
+      feed_dict = {
+        self.model.synthetic_batch_size: self.data_loader.batch_size/2,
+        self.model.R_x_history: self.history_buffer.sample(),
+        self.model.y: self.data_loader.next(),
+      }
+      res = self.model.train_discrim(
+          sess, feed_dict, summary_writer, with_history=True, with_output=False)
       summary_writer = self._get_summary_writer(res)
 
     for step in trange(self.max_step, desc="Train both"):
+      import ipdb; ipdb.set_trace() 
       for k in xrange(self.K_g):
-        res = self.model.train_refiner(sess, self.data_loader.next(),
-                                      summary_writer, with_output=True)
+        feed_dict = {
+          self.model.synthetic_batch_size: self.data_loader.batch_size,
+        }
+        res = self.model.train_refiner(
+            sess, feed_dict, summary_writer, with_output=True)
         self.history_buffer.push(res['output'])
         summary_writer = self._get_summary_writer(res)
 
       for k in xrange(self.K_d):
-        res = self.model.train_discrim(sess, self.data_loader.next(),
-                                      summary_writer, with_output=True)
+        feed_dict = {
+          self.model.synthetic_batch_size: self.data_loader.batch_size/2,
+          self.model.R_x_history: self.history_buffer.sample(),
+          self.model.y: self.data_loader.next(),
+        }
+        res = self.model.train_discrim(
+            sess, feed_dict, summary_writer, with_history=True, with_output=True)
         summary_writer = self._get_summary_writer(res)
 
   def test(self):
