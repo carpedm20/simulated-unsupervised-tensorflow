@@ -47,6 +47,7 @@ train_arg.add_argument('--num_epochs', type=int, default=12, help='')
 train_arg.add_argument('--random_seed', type=int, default=123, help='')
 train_arg.add_argument('--learning_rate', type=float, default=0.001, help='')
 train_arg.add_argument('--checkpoint_secs', type=int, default=300, help='')
+train_arg.add_argument('--max_grad_norm', type=float, default=50, help='')
 
 # Misc
 misc_arg = add_argument_group('Misc')

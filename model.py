@@ -10,6 +10,7 @@ class Model(object):
     self.debug = config.debug
     self.reg_scale = config.reg_scale
     self.learning_rate = config.learning_rate
+    self.max_grad_norm = config.max_grad_norm
 
     self.layer_dict = {}
 
@@ -47,30 +48,33 @@ class Model(object):
     self.refiner_step = tf.Variable(0, name='refiner_step', trainable=False)
     self.discrim_step = tf.Variable(0, name='discrim_step', trainable=False)
 
+    def minimize(optim, loss, step, var_list):
+      if self.max_grad_norm != None:
+        grads_and_vars = optim.compute_gradients(loss)
+        new_grads_and_vars = []
+        for idx, (grad, var) in enumerate(grads_and_vars):
+          if grad is not None and var in var_list:
+            new_grads_and_vars.append((tf.clip_by_norm(grad, self.max_grad_norm), var))
+        return optim.apply_gradients(grads_and_vars,
+                                     global_step=step)
+      else:
+        return optim.minimize(loss, global_step=step, var_list=var_list)
+
     if self.task == "generative":
       #optim = tf.train.GradientDescentOptimizer(self.learning_rate)
       optim = tf.train.AdamOptimizer(self.learning_rate)
-      self.refiner_optim = optim.minimize(
-          self.refiner_loss,
-          global_step=self.refiner_step,
-          var_list=self.refiner_vars,
-      )
+      self.refiner_optim = minimize(
+          optim, self.refiner_loss, self.refiner_step, self.refiner_vars)
 
       #optim = tf.train.GradientDescentOptimizer(self.learning_rate)
       optim = tf.train.AdamOptimizer(self.learning_rate)
-      self.discrim_optim = optim.minimize(
-          self.discrim_loss,
-          global_step=self.discrim_step,
-          var_list=self.discrim_vars,
-      )
+      self.discrim_optim = minimize(
+          optim, self.discrim_loss, self.discrim_step, self.discrim_vars)
 
       #optim = tf.train.GradientDescentOptimizer(self.learning_rate)
       optim = tf.train.AdamOptimizer(self.learning_rate)
-      self.discrim_optim_with_history = optim.minimize(
-          self.discrim_loss_with_history,
-          global_step=self.discrim_step,
-          var_list=self.discrim_vars,
-      )
+      self.discrim_optim_with_history = minimize(
+          optim, self.discrim_loss_with_history, self.discrim_step, self.discrim_vars)
     elif self.task == "estimate":
       raise Exception("[!] Not implemented yet")
 
