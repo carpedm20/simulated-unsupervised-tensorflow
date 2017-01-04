@@ -12,6 +12,7 @@ class Trainer(object):
     self.config = config
     self.task = config.task
     self.model_dir = config.model_dir
+    self.gpu_memory_fraction = config.gpu_memory_fraction
 
     self.log_step = config.log_step
     self.max_step = config.max_step
@@ -49,8 +50,11 @@ class Trainer(object):
                              save_model_secs=self.checkpoint_secs,
                              global_step=self.model.discrim_step)
 
-    sess_config = tf.ConfigProto(allow_soft_placement=True)
-    sess_config.gpu_options.allow_growth = True
+    gpu_options = tf.GPUOptions(
+        per_process_gpu_memory_fraction=self.gpu_memory_fraction,
+        allow_growth=True) # seems to be not working
+    sess_config = tf.ConfigProto(allow_soft_placement=True,
+                                 gpu_options=gpu_options)
 
     sess = sv.prepare_or_wait_for_session(config=sess_config)
 

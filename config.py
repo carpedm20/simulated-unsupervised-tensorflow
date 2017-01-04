@@ -55,7 +55,8 @@ misc_arg.add_argument('--log_step', type=int, default=20, help='')
 misc_arg.add_argument('--log_dir', type=str, default='logs')
 misc_arg.add_argument('--sample_dir', type=str, default='samples')
 misc_arg.add_argument('--load_path', type=str, default='')
-misc_arg.add_argument('--debug', type=str2bool, default=True)
+misc_arg.add_argument('--debug', type=str2bool, default=False)
+misc_arg.add_argument('--gpu_memory_fraction', type=float, default=1.0)
 
 def get_config():
   config, unparsed = parser.parse_known_args()
