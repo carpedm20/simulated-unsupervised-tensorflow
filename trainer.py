@@ -49,10 +49,10 @@ class Trainer(object):
                              save_model_secs=self.checkpoint_secs,
                              global_step=self.model.discrim_step)
 
-    config = tf.ConfigProto(allow_soft_placement=True)
-    config.gpu_options.allow_growth = True
+    sess_config = tf.ConfigProto(allow_soft_placement=True)
+    sess_config.gpu_options.allow_growth = True
 
-    sess = sv.prepare_or_wait_for_session(config=config)
+    sess = sv.prepare_or_wait_for_session(config=sess_config)
 
     print("[*] Training starts...")
     self._summary_writer = None

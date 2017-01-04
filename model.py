@@ -138,8 +138,8 @@ class Model(object):
             self.refiner_loss, [self.regularization_loss], "reg_loss")
 
     self.refiner_summary = tf.summary.merge([
-        tf.summary.image("synthetic_images", self.x),
-        tf.summary.image("refined_images", self.denormalized_R_x),
+        tf.summary.image("synthetic_images", self.x, max_outputs=7),
+        tf.summary.image("refined_images", self.denormalized_R_x, max_outputs=7),
         tf.summary.scalar("refiner/realism_loss",
                           tf.reduce_mean(self.realism_loss)),
         tf.summary.scalar("refiner/regularization_loss",
