@@ -77,7 +77,6 @@ class Trainer(object):
       summary_writer = self._get_summary_writer(res)
 
     for step in trange(self.max_step, desc="Train both"):
-      import ipdb; ipdb.set_trace() 
       for k in xrange(self.K_g):
         feed_dict = {
           self.model.synthetic_batch_size: self.data_loader.batch_size,
@@ -94,7 +93,7 @@ class Trainer(object):
           self.model.y: self.data_loader.next(),
         }
         res = self.model.train_discrim(
-            sess, feed_dict, summary_writer, with_history=True, with_output=True)
+            sess, feed_dict, summary_writer, with_history=True, with_output=False)
         summary_writer = self._get_summary_writer(res)
 
   def test(self):

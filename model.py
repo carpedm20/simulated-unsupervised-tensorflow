@@ -48,21 +48,24 @@ class Model(object):
     self.discrim_step = tf.Variable(0, name='discrim_step', trainable=False)
 
     if self.task == "generative":
-      optim = tf.train.GradientDescentOptimizer(self.learning_rate)
+      #optim = tf.train.GradientDescentOptimizer(self.learning_rate)
+      optim = tf.train.AdamOptimizer(self.learning_rate)
       self.refiner_optim = optim.minimize(
           self.refiner_loss,
           global_step=self.refiner_step,
           var_list=self.refiner_vars,
       )
 
-      optim = tf.train.GradientDescentOptimizer(self.learning_rate)
+      #optim = tf.train.GradientDescentOptimizer(self.learning_rate)
+      optim = tf.train.AdamOptimizer(self.learning_rate)
       self.discrim_optim = optim.minimize(
           self.discrim_loss,
           global_step=self.discrim_step,
           var_list=self.discrim_vars,
       )
 
-      optim = tf.train.GradientDescentOptimizer(self.learning_rate)
+      #optim = tf.train.GradientDescentOptimizer(self.learning_rate)
+      optim = tf.train.AdamOptimizer(self.learning_rate)
       self.discrim_optim_with_history = optim.minimize(
           self.discrim_loss_with_history,
           global_step=self.discrim_step,
@@ -159,6 +162,10 @@ class Model(object):
             self.discrim_loss_with_history, [self.refiner_d_loss_with_history], "refiner_d_loss_with_history")
         self.discrim_loss_with_history = tf.Print(
             self.discrim_loss_with_history, [self.synthetic_d_loss], "synthetic_d_loss")
+        self.discrim_loss_with_history = tf.Print(
+            self.discrim_loss_with_history, [self.D_R_x_history_logits], "D_R_x_history_logits")
+        self.discrim_loss_with_history = tf.Print(
+            self.discrim_loss_with_history, [self.D_y_logits], "D_y_logits")
 
       self.discrim_summary = tf.summary.merge([
           tf.summary.scalar("synthetic_d_loss",
