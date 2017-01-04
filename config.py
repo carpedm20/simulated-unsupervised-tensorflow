@@ -35,7 +35,7 @@ train_arg.add_argument('--task', type=str, default='generative',
                        choices=['generative', 'estimation'], help='')
 train_arg.add_argument('--is_train', type=str2bool, default=True, help='')
 train_arg.add_argument('--optimizer', type=str, default='rmsprop', help='')
-train_arg.add_argument('--max_step', type=int, default=200, help='')
+train_arg.add_argument('--max_step', type=int, default=2000, help='')
 train_arg.add_argument('--reg_scale', type=float, default=0.01, help='')
 train_arg.add_argument('--initial_K_d', type=int, default=200, help='')
 train_arg.add_argument('--initial_K_g', type=int, default=1000, help='')
