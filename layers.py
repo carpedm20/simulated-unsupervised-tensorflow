@@ -58,7 +58,7 @@ def conv2d(inputs, num_outputs, kernel_size, stride,
       inputs, num_outputs, kernel_size,
       stride, activation_fn=activation_fn, 
       weights_initializer=weights_initializer,
-      biases_initializer=tf.zeros_initializer, scope=scope, **kargv)
+      biases_initializer=tf.zeros_initializer(dtype=tf.float32), scope=scope, **kargv)
   if name:
     scope = "{}/{}".format(name, scope)
   _update_dict(layer_dict, scope, outputs)
