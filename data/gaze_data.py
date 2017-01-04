@@ -44,7 +44,10 @@ def maybe_download_and_extract(
       tarfile.open(filepath, 'r:gz').extractall(data_path)
 
 def maybe_preprocess(config, data_path, sample_path=None):
-  max_synthetic_num = config.max_synthetic_num
+  if config.max_synthetic_num < 0:
+    max_synthetic_num = None
+  else:
+    max_synthetic_num = config.max_synthetic_num
   
   # MPIIGaze dataset
   base_path = os.path.join(data_path, '{}/Data/Normalized'.format(config.mpiigaze_dir))
@@ -80,9 +83,11 @@ def maybe_preprocess(config, data_path, sample_path=None):
         "[!] # of synthetic data ({}) is smaller than max_synthetic_num ({})". \
             format(len(jpg_paths), max_synthetic_num)
 
-    jpg_paths = jpg_paths[:max_synthetic_num]
+    print("[*] # of synthetic data: {}, # of cropped_data: {}". \
+        format(len(jpg_paths), len(cropped_jpg_paths)))
     print("[*] Preprocessing synthetic `gaze` data...")
 
+    jpg_paths = jpg_paths[:max_synthetic_num]
     for jpg_path in tqdm(jpg_paths):
       json_path = jpg_path.replace('jpg', 'json')
 
@@ -114,8 +119,6 @@ def load(config, data_path, sample_path):
   gaze_data = np.load(os.path.join(data_path, DATA_FNAME))
   real_data = gaze_data['real']
 
-  synthetic_data_paths = glob(os.path.join(data_path, '{}/*_cropped.png'.format(config.unityeye_dir)))
-
   if config.debug:
     if not os.path.exists(sample_path):
       os.makedirs(sample_path)
@@ -125,7 +128,7 @@ def load(config, data_path, sample_path):
       image_path = os.path.join(sample_path, "real_{}.png".format(idx))
       imwrite(image_path, real_data[idx])
 
-  return real_data, synthetic_data_paths
+  return real_data
 
 class DataLoader(object):
   def __init__(self, config, rng=None):
@@ -134,12 +137,16 @@ class DataLoader(object):
     self.batch_size = config.batch_size
     self.debug = config.debug
 
-    self.real_data, self.synthetic_data_paths = load(config, self.real_data_path, self.sample_path)
+    self.real_data = load(config, self.data_path, self.sample_path)
+    self.synthetic_data_paths = glob(
+        os.path.join(self.data_path, '{}/*_cropped.png'.format(config.unityeye_dir)))
+
+    self.synthetic_data_dims = list(imread(self.synthetic_data_paths[0]).shape) + [1]
+
     if np.rank(self.real_data) == 3:
       self.real_data = np.expand_dims(self.real_data, -1)
     
     self.real_p = 0
-    self.synthetic_p = 0
 
     self.rng = np.random.RandomState(1) if rng is None else rng
 
@@ -149,39 +156,25 @@ class DataLoader(object):
   def get_num_labels(self):
     return np.amax(self.labels) + 1
 
-  def reset_real(self):
+  def reset(self):
     self.real_p = 0
-
-  def reset_synthetic(self):
-    self.synthetic_p = 0
 
   def __iter__(self):
     return self
 
-  def __next__(self, n=None, is_synthetic=False):
+  def __next__(self, n=None):
     """ n is the number of examples to fetch """
     if n is None: n = self.batch_size
 
-    if is_synthetic:
-      if self.real_p == 0:
-        inds = self.rng.permutation(self.real_data.shape[0])
-        self.real_data = self.real_data[inds]
+    if self.real_p == 0:
+      inds = self.rng.permutation(self.real_data.shape[0])
+      self.real_data = self.real_data[inds]
 
-      if self.real_p + n > self.real_data.shape[0]:
-        self.reset()
+    if self.real_p + n > self.real_data.shape[0]:
+      self.reset()
 
-      x = self.real_data[self.real_p : self.real_p + n]
-      self.real_p += self.batch_size
-    else:
-      if self.real_p == 0:
-        inds = self.rng.permutation(self.real_data.shape[0])
-        self.real_data = self.real_data[inds]
-
-      if self.real_p + n > self.real_data.shape[0]:
-        self.reset()
-
-      x = self.real_data[self.real_p : self.real_p + n]
-      self.real_p += self.batch_size
+    x = self.real_data[self.real_p : self.real_p + n]
+    self.real_p += self.batch_size
 
     return x
 

@@ -22,14 +22,14 @@ class Trainer(object):
     self.initial_K_g = config.initial_K_g
     self.checkpoint_secs = config.checkpoint_secs
 
-    self.model = Model(config)
-    self.history_buffer = Buffer(config)
-
     DataLoader = {
         'gaze': gaze_data.DataLoader,
         'hand': hand_data.DataLoader,
     }[config.data_set]
     self.data_loader = DataLoader(config, rng=rng)
+
+    self.model = Model(config, self.data_loader)
+    self.history_buffer = Buffer(config, rng)
 
     self.summary_ops = {}
     self.summary_placeholders = {}
@@ -58,14 +58,10 @@ class Trainer(object):
     summary_writer = None
 
     for k in trange(self.initial_K_g, desc="Train refiner"):
-      data = self.data_loader.next()
-      res = self.model.train_refiner(sess, data,
+      res = self.model.train_refiner(sess, None,
                                      summary_writer, with_output=True)
+      self.history_buffer.push(res['output'])
       summary_writer = self._get_summary_writer(res)
-      # self.model.R_x.eval({self.model.x: data}, session=sess)
-      # self.model.layer_dict['refiner/resnet/resnet_4'].eval({self.model.x: data},session=sess).max()
-      # self.model.layer_dict['refiner/conv_1'].eval({self.model.x: data},session=sess).min()
-      # self.model.R_x.eval({self.model.x: data},session=sess).min()
 
     for k in trange(self.initial_K_d, desc="Train discrim"):
       res = self.model.train_discrim(sess, self.data_loader.next(),
@@ -76,6 +72,7 @@ class Trainer(object):
       for k in xrange(self.K_g):
         res = self.model.train_refiner(sess, self.data_loader.next(),
                                       summary_writer, with_output=True)
+        self.history_buffer.push(res['output'])
         summary_writer = self._get_summary_writer(res)
 
       for k in xrange(self.K_d):

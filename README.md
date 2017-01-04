@@ -2,7 +2,7 @@
 
 TensorFlow implementation of [Learning from Simulated and Unsupervised Images through Adversarial Training](https://arxiv.org/abs/1612.07828).
 
-(in progress)
+![model](./assets/SimGAN.png)
 
 
 ## Requirements
@@ -54,6 +54,8 @@ To test with an existing model:
 ## Results
 
 (in progress)
+
+![model](./assets/results_0104.png)
 
 
 ## Author
