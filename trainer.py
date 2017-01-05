@@ -79,14 +79,16 @@ class Trainer(object):
             self.data_loader.synthetic_data_paths[:self.config.max_image_summary]]
     ), -1)
 
-    def train_refiner():
+    def train_refiner(push_buffer=False):
       feed_dict = {
         self.model.synthetic_batch_size: self.data_loader.batch_size,
       }
       res = self.model.train_refiner(
           self.sess, feed_dict, self._summary_writer, with_output=True)
-      self.history_buffer.push(res['output'])
       self._summary_writer = self._get_summary_writer(res)
+
+      if push_buffer:
+        self.history_buffer.push(res['output'])
 
       if res['step'] % self.log_step == 0:
         feed_dict = {
@@ -117,7 +119,7 @@ class Trainer(object):
 
     for step in trange(self.max_step, desc="Train both"):
       for k in xrange(self.K_g):
-        train_refiner()
+        train_refiner(push_buffer=True)
 
       for k in xrange(self.K_d):
         train_discrim()

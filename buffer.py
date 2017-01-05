@@ -26,6 +26,7 @@ class Buffer(object):
       self.idx += batch_size
 
   def sample(self, n=None):
+    assert self.idx > n, "not enough data is pushed"
     if n is None:
       n = self.batch_size/2
     random_idx = self.rng.choice(self.idx, n)
