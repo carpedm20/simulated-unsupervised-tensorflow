@@ -1,3 +1,4 @@
+import os
 from tqdm import trange
 import tensorflow as tf
 from tensorflow.contrib.framework.python.ops import arg_scope
@@ -6,6 +7,7 @@ from model import Model
 from buffer import Buffer
 import data.gaze_data as gaze_data
 import data.hand_data as hand_data
+from utils import imwrite, img_tile
 
 class Trainer(object):
   def __init__(self, config, rng):
@@ -32,14 +34,23 @@ class Trainer(object):
     self.model = Model(config, self.data_loader)
     self.history_buffer = Buffer(config, rng)
 
-    self.summary_ops = {}
-    self.summary_placeholders = {}
+    self.summary_ops = {
+        'test_synthetic_images': {
+            'summary': tf.summary.image("test_synthetic_images",
+                                        self.model.resized_x,
+                                        max_outputs=config.max_image_summary),
+            'output': self.model.resized_x,
+        },
+        'test_refined_images': {
+            'summary': tf.summary.image("test_refined_images",
+                                        self.model.denormalized_R_x,
+                                        max_outputs=config.max_image_summary),
+            'output': self.model.denormalized_R_x,
+        }
+    }
 
     self.saver = tf.train.Saver()
     self.summary_writer = tf.summary.FileWriter(self.model_dir)
-
-  def train(self):
-    self.model.build_optim()
 
     sv = tf.train.Supervisor(logdir=self.model_dir,
                              is_chief=True,
@@ -56,19 +67,35 @@ class Trainer(object):
     sess_config = tf.ConfigProto(allow_soft_placement=True,
                                  gpu_options=gpu_options)
 
-    sess = sv.prepare_or_wait_for_session(config=sess_config)
+    self.sess = sv.prepare_or_wait_for_session(config=sess_config)
 
+  def train(self):
     print("[*] Training starts...")
     self._summary_writer = None
+
+    test_samples = self.model.resized_x.eval({
+        self.model.synthetic_batch_size: 64,
+      }, session=self.sess)
 
     def train_refiner():
       feed_dict = {
         self.model.synthetic_batch_size: self.data_loader.batch_size,
       }
       res = self.model.train_refiner(
-          sess, feed_dict, self._summary_writer, with_output=True)
+          self.sess, feed_dict, self._summary_writer, with_output=True)
       self.history_buffer.push(res['output'])
       self._summary_writer = self._get_summary_writer(res)
+
+      if res['step'] % self.log_step == 0:
+        feed_dict = {
+            self.model.resized_x: test_samples,
+        }
+        self._inject_summary(
+          'test_refined_images', feed_dict, res['step'])
+
+        if res['step'] / float(self.log_step) == 1.:
+          self._inject_summary(
+              'test_synthetic_images', feed_dict, res['step'])
 
     def train_discrim():
       feed_dict = {
@@ -77,10 +104,8 @@ class Trainer(object):
         self.model.y: self.data_loader.next(),
       }
       res = self.model.train_discrim(
-          sess, feed_dict, self._summary_writer, with_history=True, with_output=False)
+          self.sess, feed_dict, self._summary_writer, with_history=True, with_output=False)
       self._summary_writer = self._get_summary_writer(res)
-      # self.model.D_R_x_logits.eval(feed_dict, session=sess)[:10,0,0,:]
-      # self.model.D_y_logits.eval(feed_dict, session=sess)[:10,0,0,:]
 
     for k in trange(self.initial_K_g, desc="Train refiner"):
       train_refiner()
@@ -96,28 +121,21 @@ class Trainer(object):
         train_discrim()
 
   def test(self):
-    pass
+    batch_size = self.data_loader.batch_size
+    for idx in trange(len(self.data_loader.synthetic_data_paths) / batch_size):
+      feed_dict = {
+        self.model.synthetic_batch_size: batch_size,
+      }
+      res = self.model.test_refiner(
+          self.sess, feed_dict, self._summary_writer, with_output=True)
 
-  def _inject_summary(self, sess, tag_dict, step):
-    feed_dict = {
-        self.summary_placeholders[tag]: \
-            value for tag, value in tag_dict.items()
-    }
-    summaries = sess.run(
-        [self.summary_ops[tag] for tag in tag_dict.keys()], feed_dict)
+  def _inject_summary(self, tag, feed_dict, step):
+    summaries = self.sess.run(self.summary_ops[tag], feed_dict)
+    self.summary_writer.add_summary(summaries['summary'], step)
 
-    for summary in summaries:
-      self.summary_writer.add_summary(summary, step)
-
-  def _create_summary_op(self, tags):
-    if type(tags) != list:
-      tags = [tags]
-
-    for tag in tags:
-      self.summary_placeholders[tag] = \
-          tf.placeholder('float32', None, name=tag.replace(' ', '_'))
-      self.summary_ops[tag] = \
-          tf.summary.scalar(tag, self.summary_placeholders[tag])
+    path = os.path.join(
+        self.config.sample_dir, self.config.model_name, "{}.png".format(step))
+    imwrite(path, img_tile(summaries['output'], tile_shape=[8, 8])[:,:,0])
 
   def _get_summary_writer(self, result):
     if result['step'] % self.log_step == 0:

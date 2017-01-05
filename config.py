@@ -26,8 +26,8 @@ data_arg.add_argument('--input_height', type=int, default=35)
 data_arg.add_argument('--input_width', type=int, default=55)
 data_arg.add_argument('--input_channel', type=int, default=1)
 data_arg.add_argument('--max_synthetic_num', type=int, default=-1)
-data_arg.add_argument('--mpiigaze_dir', type=str, default="MPIIGaze")
-data_arg.add_argument('--unityeye_dir', type=str, default="UnityEyes")
+data_arg.add_argument('--real_image_dir', type=str, default="MPIIGaze")
+data_arg.add_argument('--synthetic_image_dir', type=str, default="UnityEyes")
 
 # Training / test parameters
 train_arg = add_argument_group('Training')
@@ -57,6 +57,7 @@ misc_arg.add_argument('--sample_dir', type=str, default='samples')
 misc_arg.add_argument('--load_path', type=str, default='')
 misc_arg.add_argument('--debug', type=str2bool, default=False)
 misc_arg.add_argument('--gpu_memory_fraction', type=float, default=1.0)
+misc_arg.add_argument('--max_image_summary', type=int, default=3)
 
 def get_config():
   config, unparsed = parser.parse_known_args()

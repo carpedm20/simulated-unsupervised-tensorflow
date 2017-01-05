@@ -18,7 +18,7 @@ TensorFlow implementation of [Learning from Simulated and Unsupervised Images th
 To generate synthetic dataset:
 
 1. Run [UnityEyes](http://www.cl.cam.ac.uk/research/rainbow/projects/unityeyes/) with changing `resolution` to `640x480` and `Camera parameters` to `[0, 0, 20, 40]`.
-2. ...
+2. Move generated images into `data/gaze/UnityEyes`.
 
 The `data` directory should looks like:
 
@@ -39,21 +39,21 @@ The `data` directory should looks like:
     ├── hand_data.py
     └── utils.py
 
-To train a model:
+To train a model (samples will be generated in `samples` directory):
 
-    $ python main.py --data_set gaze
-    $ python main.py --data_set hand
-
+    $ python main.py
+    $ tensorboard --logdir=logs --host=0.0.0.0
 
 To test with an existing model:
 
-    $ python main.py --data_set gaze --test
-    $ python main.py --data_set hand --test
+    $ python main.py --is_train=False --synthetic_image_dir="./data/gaze/UnityEyes/"
 
 
 ## Results
 
 (in progress)
+
+The paper is lack of details for some hyperparameters such as `B` and `lambda`.
 
 ![result_0104](./assets/results_0104.png)
 

@@ -25,7 +25,7 @@ def image_from_paths(paths, shape, is_grayscale=True):
   if is_grayscale:
     image = tf.image.rgb_to_grayscale(image)
   image.set_shape(shape)
-  return tf.to_float(image)
+  return filename, tf.to_float(image)
 
 @add_arg_scope
 def resnet_block(

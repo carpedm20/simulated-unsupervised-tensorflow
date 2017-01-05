@@ -23,6 +23,8 @@ def main(_):
   if config.is_train:
     trainer.train()
   else:
+    if not config.load_path:
+      raise Exception("[!] You should specify `load_path` to load a pretrained model")
     trainer.test()
 
 if __name__ == "__main__":

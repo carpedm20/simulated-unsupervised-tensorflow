@@ -10,6 +10,7 @@ class Model(object):
 
     self.task = config.task
     self.debug = config.debug
+    self.config = config
 
     self.input_height = config.input_height
     self.input_width = config.input_width
@@ -25,6 +26,7 @@ class Model(object):
     self._build_placeholders()
     self._build_model()
     self._build_steps()
+    self._build_optim()
 
     show_all_variables()
 
@@ -35,12 +37,22 @@ class Model(object):
     capacity = min_after_dequeue + 3 * self.batch_size
 
     self.synthetic_batch_size = tf.placeholder(tf.int32, [], "synthetic_batch_size")
-    self.synthetic_images = image_from_paths(self.data_loader.synthetic_data_paths,
-                                             self.data_loader.synthetic_data_dims)
-    self.x = tf.train.shuffle_batch(
-        [self.synthetic_images], batch_size=self.synthetic_batch_size,
-        num_threads=4, capacity=capacity,
-        min_after_dequeue=min_after_dequeue, name='synthetic_inputs')
+    self.synthetic_filenames, self.synthetic_images = \
+        image_from_paths(self.data_loader.synthetic_data_paths,
+                         self.data_loader.synthetic_data_dims)
+
+    if config.is_train:
+      self.x_filename, self.x = tf.train.shuffle_batch(
+          [self.synthetic_filenames, self.synthetic_images],
+          batch_size=self.synthetic_batch_size,
+          num_threads=4, capacity=capacity,
+          min_after_dequeue=min_after_dequeue, name='synthetic_inputs')
+    else:
+      self.x_filename, self.x = tf.train.batch(
+          [self.synthetic_filenames, self.synthetic_images],
+          batch_size=self.synthetic_batch_size,
+          num_threads=4, capacity=capacity,
+          min_after_dequeue=min_after_dequeue, name='synthetic_inputs')
 
     self.y = tf.placeholder(
         tf.uint8, [None, None, None, self.input_channel], name='real_inputs')
@@ -54,10 +66,10 @@ class Model(object):
     self.normalized_x = normalize(self.resized_x)
     self.normalized_y = normalize(self.resized_y)
 
-  def build_optim(self):
     self.refiner_step = tf.Variable(0, name='refiner_step', trainable=False)
     self.discrim_step = tf.Variable(0, name='discrim_step', trainable=False)
 
+  def _build_optim(self):
     def minimize(loss, step, var_list):
       #optim = tf.train.GradientDescentOptimizer(self.learning_rate)
       optim = tf.train.AdamOptimizer(self.learning_rate)
@@ -138,8 +150,10 @@ class Model(object):
             self.refiner_loss, [self.regularization_loss], "reg_loss")
 
     self.refiner_summary = tf.summary.merge([
-        tf.summary.image("synthetic_images", self.x, max_outputs=7),
-        tf.summary.image("refined_images", self.denormalized_R_x, max_outputs=7),
+        #tf.summary.image("synthetic_images",
+        #                 self.x, max_outputs=self.config.max_image_summary),
+        #tf.summary.image("refined_images",
+        #                 self.denormalized_R_x, max_outputs=self.config.max_image_summary),
         tf.summary.scalar("refiner/realism_loss",
                           tf.reduce_mean(self.realism_loss)),
         tf.summary.scalar("refiner/regularization_loss",
@@ -185,6 +199,8 @@ class Model(object):
             self.discrim_loss_with_history, [self.D_y_logits], "D_y_logits")
 
       self.discrim_summary = tf.summary.merge([
+          #tf.summary.image("real_images",
+          #                  self.resized_y, max_outputs=self.config.max_image_summary),
           tf.summary.scalar("synthetic_d_loss",
                             tf.reduce_mean(self.synthetic_d_loss)),
           tf.summary.scalar("refiner_d_loss",
@@ -193,6 +209,8 @@ class Model(object):
                             tf.reduce_mean(self.discrim_loss)),
       ])
       self.discrim_summary_with_history = tf.summary.merge([
+          #tf.summary.image("real_images",
+          #                 self.resized_y, max_outputs=self.config.max_image_summary),
           tf.summary.scalar("synthetic_d_loss",
                             tf.reduce_mean(self.synthetic_d_loss)),
           tf.summary.scalar("refiner_d_loss_with_history",
@@ -227,6 +245,7 @@ class Model(object):
 
     def test_refiner(sess, feed_dict, summary_writer=None, with_output=False):
       fetch = {
+          'x_filename': self.x_filename,
           'loss': self.refiner_loss,
           'step': self.refiner_step,
       }

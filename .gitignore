@@ -2,6 +2,7 @@
 data/hand
 data/gaze
 data/*.png
+samples/*.png
 
 # Log
 logs

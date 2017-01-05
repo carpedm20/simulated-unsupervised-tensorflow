@@ -25,7 +25,7 @@ def maybe_download_and_extract(
     config,
     data_path,
     url='http://datasets.d2.mpi-inf.mpg.de/MPIIGaze/MPIIGaze.tar.gz'):
-  if not os.path.exists(os.path.join(data_path, config.mpiigaze_dir)):
+  if not os.path.exists(os.path.join(data_path, config.real_image_dir)):
     if not os.path.exists(data_path):
       os.makedirs(data_path)
 
@@ -50,7 +50,7 @@ def maybe_preprocess(config, data_path, sample_path=None):
     max_synthetic_num = config.max_synthetic_num
   
   # MPIIGaze dataset
-  base_path = os.path.join(data_path, '{}/Data/Normalized'.format(config.mpiigaze_dir))
+  base_path = os.path.join(data_path, '{}/Data/Normalized'.format(config.real_image_dir))
   npz_path = os.path.join(data_path, DATA_FNAME)
 
   if not os.path.exists(npz_path):
@@ -73,40 +73,57 @@ def maybe_preprocess(config, data_path, sample_path=None):
     np.savez(npz_path, real=real_data)
 
   # UnityEyes dataset
-  cropped_jpg_paths = glob(os.path.join(data_path, '{}/*_cropped.png'.format(config.unityeye_dir)))
-  jpg_paths = glob(os.path.join(data_path, '{}/*.jpg'.format(config.unityeye_dir)))
+  synthetic_image_path_candidates = [
+      config.synthetic_image_dir,
+      os.path.join(data_path, config.synthetic_image_dir),
+  ]
+  for synthetic_image_path in synthetic_image_path_candidates:
+    jpg_paths = glob(os.path.join(synthetic_image_path, '*.jpg'))
+    cropped_jpg_paths = glob(os.path.join(synthetic_image_path, '*_cropped.png'))
 
-  if len(cropped_jpg_paths) != len(jpg_paths):
-    json_paths = glob(os.path.join(data_path, '{}/*.json'.format(config.unityeye_dir)))
+    if len(jpg_paths) == 0:
+      print("[!] No images in {}. Skip.".format(synthetic_image_path))
+      continue
+    else:
+      print("[!] Found images in {}.".format(synthetic_image_path))
+      if len(cropped_jpg_paths) != len(jpg_paths):
+        json_paths = glob(os.path.join(
+            data_path, '{}/*.json'.format(config.synthetic_image_dir)))
 
-    assert len(jpg_paths) >= max_synthetic_num, \
-        "[!] # of synthetic data ({}) is smaller than max_synthetic_num ({})". \
-            format(len(jpg_paths), max_synthetic_num)
+        assert len(jpg_paths) >= max_synthetic_num, \
+            "[!] # of synthetic data ({}) is smaller than max_synthetic_num ({})". \
+                format(len(jpg_paths), max_synthetic_num)
 
-    print("[*] # of synthetic data: {}, # of cropped_data: {}". \
-        format(len(jpg_paths), len(cropped_jpg_paths)))
-    print("[*] Preprocessing synthetic `gaze` data...")
+        print("[*] # of synthetic data: {}, # of cropped_data: {}". \
+            format(len(jpg_paths), len(cropped_jpg_paths)))
+        print("[*] Preprocessing synthetic `gaze` data...")
 
-    jpg_paths = jpg_paths[:max_synthetic_num]
-    for jpg_path in tqdm(jpg_paths):
-      json_path = jpg_path.replace('jpg', 'json')
+        jpg_paths = jpg_paths[:max_synthetic_num]
+        for jpg_path in tqdm(jpg_paths):
+          json_path = jpg_path.replace('jpg', 'json')
 
-      with open(json_path) as json_f:
-        img = imread(jpg_path)
-        j = json.loads(json_f.read())
+          with open(json_path) as json_f:
+            img = imread(jpg_path)
+            j = json.loads(json_f.read())
 
-        key = "interior_margin_2d"
-        j[key] = process_json_list(j[key], img)
+            key = "interior_margin_2d"
+            j[key] = process_json_list(j[key], img)
 
-        x_min, x_max = int(min(j[key][:,0])), int(max(j[key][:,0]))
-        y_min, y_max = int(min(j[key][:,1])), int(max(j[key][:,1]))
+            x_min, x_max = int(min(j[key][:,0])), int(max(j[key][:,0]))
+            y_min, y_max = int(min(j[key][:,1])), int(max(j[key][:,1]))
 
-        x_center, y_center = (x_min + x_max)/2, (y_min + y_max)/2
+            x_center, y_center = (x_min + x_max)/2, (y_min + y_max)/2
 
-        cropped_img = img[y_center-42: y_center+42, x_center-70:x_center+70]
-        img_path = jpg_path.replace(".jpg", "_cropped.png")
+            cropped_img = img[y_center-42: y_center+42, x_center-70:x_center+70]
+            img_path = jpg_path.replace(".jpg", "_cropped.png")
 
-        save_array_to_grayscale_image(cropped_img, img_path)
+            save_array_to_grayscale_image(cropped_img, img_path)
+        return synthetic_image_path
+      elif len(cropped_jpg_paths) == len(jpg_paths):
+        return synthetic_image_path
+
+  raise Exception("[!] Failed to found proper synthetic_image_path in {}" \
+      .format(synthetic_image_path_candidates))
 
 def load(config, data_path, sample_path):
   if not os.path.exists(data_path):
@@ -114,7 +131,7 @@ def load(config, data_path, sample_path):
     os.makedirs(data_path)
 
   maybe_download_and_extract(config, data_path)
-  maybe_preprocess(config, data_path, sample_path)
+  synthetic_image_path = maybe_preprocess(config, data_path, sample_path)
 
   gaze_data = np.load(os.path.join(data_path, DATA_FNAME))
   real_data = gaze_data['real']
@@ -128,7 +145,7 @@ def load(config, data_path, sample_path):
       image_path = os.path.join(sample_path, "real_{}.png".format(idx))
       imwrite(image_path, real_data[idx])
 
-  return real_data
+  return real_data, synthetic_image_path
 
 class DataLoader(object):
   def __init__(self, config, rng=None):
@@ -137,10 +154,9 @@ class DataLoader(object):
     self.batch_size = config.batch_size
     self.debug = config.debug
 
-    self.real_data = load(config, self.data_path, self.sample_path)
-    self.synthetic_data_paths = glob(
-        os.path.join(self.data_path, '{}/*_cropped.png'.format(config.unityeye_dir)))
+    self.real_data, synthetic_image_path = load(config, self.data_path, self.sample_path)
 
+    self.synthetic_data_paths = glob(os.path.join(synthetic_image_path, '*_cropped.png'))
     self.synthetic_data_dims = list(imread(self.synthetic_data_paths[0]).shape) + [1]
 
     if np.rank(self.real_data) == 3:
