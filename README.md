@@ -51,32 +51,63 @@ To refine all synthetic images with a pretrained model:
 
 ## Differences with the paper
 
-- Used an Adam optimizer not a Stochatstic Gradient Descent.
+- Used Adam and Stochatstic Gradient Descent optimizer.
 - Only used 83K (14% of 1.2M used by the paper) synthetic images from `UnityEyes`.
 - Manually choose hyperparameters for `B` and `lambda` because those are not specified in the paper.
 
 
 ## Training results
 
+### Experiments #1
+
 For these synthetic images,
 
-![UnityEyes_sample](./assets/UnityEyes_samples.png)
+![UnityEyes_sample](./assets/UnityEyes_samples1.png)
 
-Result of `lambda=1.0` after 4,000 steps.
+Result of `lambda=1.0` with `optimizer=sgd` after 8,000 steps.
 
-![Refined_sample_with_lambd=1.0](./assets/lambda=1.0.png)
+    $ python main.py --reg_scale=1.0 --optimizer=sgd
 
-Result of `lambda=0.5` after 4,000 steps.
+![Refined_sample_with_lambd=1.0](./assets/lambda=1.0_optimizer=sgd.png)
 
-![Refined_sample_with_lambd=0.5](./assets/lambda=0.5.png)
+Result of `lambda=0.5` with `optimizer=sgd` after 8,000 steps.
 
-Result of `lambda=0.1` after 4,000 steps.
+    $ python main.py --reg_scale=0.5 --optimizer=sgd
 
-![Refined_sample_with_lambd=0.1](./assets/lambda=0.1.png)
+![Refined_sample_with_lambd=1.0](./assets/lambda=0.5_optimizer=sgd.png)
+
+Training loss of discriminator and refiner when `lambda` is `1.0` (green) and `0.5` (yellow).
+
+![loss](./assets/loss_lambda=1.0,0.5_optimizer=sgd.png)
+
+
+### Experiments #2
+
+For these synthetic images,
+
+![UnityEyes_sample](./assets/UnityEyes_samples2.png)
+
+Result of `lambda=1.0` with `optimizer=adam` after 4,000 steps.
+
+    $ python main.py --reg_scale=1.0 --optimizer=adam
+
+![Refined_sample_with_lambd=1.0](./assets/lambda=1.0_optimizer=adam.png)
+
+Result of `lambda=0.5` with `optimizer=adam` after 4,000 steps.
+
+    $ python main.py --reg_scale=0.5 --optimizer=adam
+
+![Refined_sample_with_lambd=0.5](./assets/lambda=0.5_optimizer=adam.png)
+
+Result of `lambda=0.1` with `optimizer=adam` after 4,000 steps.
+
+    $ python main.py --reg_scale=0.1 --optimizer=adam
+
+![Refined_sample_with_lambd=0.1](./assets/lambda=0.1_optimizer=adam.png)
 
 Training loss of discriminator and refiner when `lambda` is `1.0` (blue), `0.5` (purple) and `0.1` (green).
 
-![Refined_sample_with_lambd=0.1](./assets/loss_lambda=1.0,0.5,0.1.png)
+![loss](./assets/loss_lambda=1.0,0.5,0.1_optimizer=adam.png)
 
 
 ## Author

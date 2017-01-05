@@ -75,8 +75,12 @@ class Model(object):
 
   def _build_optim(self):
     def minimize(loss, step, var_list):
-      #optim = tf.train.GradientDescentOptimizer(self.learning_rate)
-      optim = tf.train.AdamOptimizer(self.learning_rate)
+      if self.config.optimizer == "sgd":
+        optim = tf.train.GradientDescentOptimizer(self.learning_rate)
+      elif self.config.optimizer == "adam":
+        optim = tf.train.AdamOptimizer(self.learning_rate)
+      else:
+        raise Exception("[!] Unkown optimizer: {}".format(self.config.optimizer))
 
       if self.max_grad_norm != None:
         grads_and_vars = optim.compute_gradients(loss)
