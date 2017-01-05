@@ -49,13 +49,39 @@ To test with an existing model:
     $ python main.py --is_train=False --synthetic_image_dir="./data/gaze/UnityEyes/"
 
 
-## Results
+## Differences with the paper
 
-(in progress)
+- Used an Adam optimizer not a Stochatstic Gradient Descent.
+- Only used 83K (14% of 1.2M used by the paper) synthetic images from `UnityEyes`.
+- Manually choose hyperparameters for `B` and `lambda` because those are not specified in the paper.
 
-The paper is lack of details for some hyperparameters such as `B` and `lambda`.
 
-![result_0104](./assets/results_0104.png)
+## Example real images from MPIIGaze dataset
+
+![MPIIGaze_sample](./assets/MPIIGaze_samples.png)
+
+
+## Training results
+
+For these synthetic images,
+
+![UnityEyes_sample](./assets/UnityEyes_samples.png)
+
+Result of `lambda=1.0` after 4,000 steps.
+
+![Refined_sample_with_lambd=1.0](./assets/lambda=1.0.png)
+
+Result of `lambda=0.5` after 4,000 steps.
+
+![Refined_sample_with_lambd=0.5](./assets/lambda=0.5.png)
+
+Result of `lambda=0.1` after 4,000 steps.
+
+![Refined_sample_with_lambd=0.1](./assets/lambda=0.1.png)
+
+Training loss of discriminator and refiner when `lambda` is `1.0` (blue), `0.5` (purple) and `0.1` (green).
+
+![Refined_sample_with_lambd=0.1](./assets/loss_lambda=1.0,0.5,0.1.png)
 
 
 ## Author

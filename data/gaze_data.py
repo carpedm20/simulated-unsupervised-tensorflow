@@ -94,13 +94,12 @@ def maybe_preprocess(config, data_path, sample_path=None):
             "[!] # of synthetic data ({}) is smaller than max_synthetic_num ({})". \
                 format(len(jpg_paths), max_synthetic_num)
 
-        print("[*] # of synthetic data: {}, # of cropped_data: {}". \
-            format(len(jpg_paths), len(cropped_jpg_paths)))
-        print("[*] Preprocessing synthetic `gaze` data...")
-
         jpg_paths = jpg_paths[:max_synthetic_num]
-        for jpg_path in tqdm(jpg_paths):
-          json_path = jpg_path.replace('jpg', 'json')
+        for json_path in tqdm(json_paths):
+          jpg_path = jpg_path.replace('json', 'jpg')
+
+          if not os.path.exists(jpg_path):
+            continue
 
           with open(json_path) as json_f:
             img = imread(jpg_path)
@@ -118,14 +117,20 @@ def maybe_preprocess(config, data_path, sample_path=None):
             img_path = jpg_path.replace(".jpg", "_cropped.png")
 
             save_array_to_grayscale_image(cropped_img, img_path)
-        return synthetic_image_path
-      elif len(cropped_jpg_paths) == len(jpg_paths):
-        return synthetic_image_path
+
+      jpg_paths = glob(os.path.join(synthetic_image_path, '*.jpg'))
+      cropped_jpg_paths = glob(os.path.join(synthetic_image_path, '*_cropped.png'))
+
+      print("[*] # of synthetic data: {}, # of cropped_data: {}". \
+          format(len(jpg_paths), len(cropped_jpg_paths)))
+      print("[*] Finished preprocessing synthetic `gaze` data.")
+
+      return synthetic_image_path
 
   raise Exception("[!] Failed to found proper synthetic_image_path in {}" \
       .format(synthetic_image_path_candidates))
 
-def load(config, data_path, sample_path):
+def load(config, data_path, sample_path, rng):
   if not os.path.exists(data_path):
     print('creating folder', data_path)
     os.makedirs(data_path)
@@ -136,25 +141,27 @@ def load(config, data_path, sample_path):
   gaze_data = np.load(os.path.join(data_path, DATA_FNAME))
   real_data = gaze_data['real']
 
-  if config.debug:
-    if not os.path.exists(sample_path):
-      os.makedirs(sample_path)
+  if not os.path.exists(sample_path):
+    os.makedirs(sample_path)
 
-    print("[*] Save samples images in {}".format(data_path))
-    for idx in range(100):
-      image_path = os.path.join(sample_path, "real_{}.png".format(idx))
-      imwrite(image_path, real_data[idx])
+  print("[*] Save samples images in {}".format(data_path))
+  random_idxs = rng.choice(len(real_data), 100)
+  for idx, random_idx in enumerate(random_idxs):
+    image_path = os.path.join(sample_path, "real_{}.png".format(idx))
+    imwrite(image_path, real_data[random_idx])
 
   return real_data, synthetic_image_path
 
 class DataLoader(object):
   def __init__(self, config, rng=None):
+    self.rng = np.random.RandomState(1) if rng is None else rng
+
     self.data_path = os.path.join(config.data_dir, 'gaze')
     self.sample_path = os.path.join(self.data_path, config.sample_dir)
     self.batch_size = config.batch_size
     self.debug = config.debug
 
-    self.real_data, synthetic_image_path = load(config, self.data_path, self.sample_path)
+    self.real_data, synthetic_image_path = load(config, self.data_path, self.sample_path, rng)
 
     self.synthetic_data_paths = np.array(glob(os.path.join(synthetic_image_path, '*_cropped.png')))
     self.synthetic_data_dims = list(imread(self.synthetic_data_paths[0]).shape) + [1]
@@ -165,8 +172,6 @@ class DataLoader(object):
       self.real_data = np.expand_dims(self.real_data, -1)
     
     self.real_p = 0
-
-    self.rng = np.random.RandomState(1) if rng is None else rng
 
   def get_observation_size(self):
     return self.real_data.shape[1:]
