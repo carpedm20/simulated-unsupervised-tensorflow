@@ -1,4 +1,5 @@
 import os
+import json
 import numpy as np
 from datetime import datetime
 
@@ -87,3 +88,12 @@ def img_tile(imgs, aspect_ratio=1.0, tile_shape=None, border=1,
       tile_img[yoff:yoff+img_shape[0], xoff:xoff+img_shape[1], ...] = img
 
   return tile_img
+
+def save_config(model_dir, config):
+  param_path = os.path.join(model_dir, "params.json")
+
+  print("[*] MODEL dir: %s" % model_dir)
+  print("[*] PARAM path: %s" % param_path)
+
+  with open(param_path, 'w') as fp:
+    json.dump(config.__dict__, fp,  indent=4, sort_keys=True)

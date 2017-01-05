@@ -1,14 +1,10 @@
-import os
 import sys
-import time
-import json
-import argparse
 import numpy as np
 import tensorflow as tf
 
 from trainer import Trainer
 from config import get_config
-from utils import prepare_dirs
+from utils import prepare_dirs, save_config
 
 config = None
 
@@ -19,6 +15,7 @@ def main(_):
   tf.set_random_seed(config.random_seed)
 
   trainer = Trainer(config, rng)
+  save_config(config.model_dir, config)
 
   if config.is_train:
     trainer.train()
