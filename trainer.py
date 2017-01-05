@@ -112,7 +112,7 @@ class Trainer(object):
       self._summary_writer = self._get_summary_writer(res)
 
     for k in trange(self.initial_K_g, desc="Train refiner"):
-      train_refiner()
+      train_refiner(push_buffer=k > self.initial_K_g * 0.9)
 
     for k in trange(self.initial_K_d, desc="Train discrim"):
       train_discrim()
