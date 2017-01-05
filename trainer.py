@@ -130,22 +130,28 @@ class Trainer(object):
 
   def test(self):
     batch_size = self.data_loader.batch_size
-    for idx in trange(len(self.data_loader.synthetic_data_paths) / batch_size):
+    num_epoch = len(self.data_loader.synthetic_data_paths) / batch_size
+
+    for idx in trange(num_epoch, desc="Refine all synthetic images"):
       feed_dict = {
         self.model.synthetic_batch_size: batch_size,
       }
       res = self.model.test_refiner(
-          self.sess, feed_dict, self._summary_writer, with_output=True)
-      import ipdb; ipdb.set_trace() 
-      x = 123
+          self.sess, feed_dict, None, with_output=True)
+
+      for image, filename in zip(res['output'], res['filename']):
+        basename = os.path.basename(filename).replace("_cropped", "_refined")
+        path = os.path.join(self.config.output_model_dir, basename)
+        imwrite(path, image[:,:,0])
 
   def _inject_summary(self, tag, feed_dict, step):
     summaries = self.sess.run(self.summary_ops[tag], feed_dict)
     self.summary_writer.add_summary(summaries['summary'], step)
 
     path = os.path.join(
-        self.config.sample_dir, self.config.model_name, "{}.png".format(step))
-    imwrite(path, img_tile(summaries['output'], tile_shape=self.config.sample_image_grid)[:,:,0])
+        self.config.sample_model_dir, "{}.png".format(step))
+    imwrite(path, img_tile(summaries['output'],
+            tile_shape=self.config.sample_image_grid)[:,:,0])
 
   def _get_summary_writer(self, result):
     if result['step'] % self.log_step == 0:

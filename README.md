@@ -44,7 +44,7 @@ To train a model (samples will be generated in `samples` directory):
     $ python main.py
     $ tensorboard --logdir=logs --host=0.0.0.0
 
-To test with an existing model:
+To refine all synthetic images with a pretrained model:
 
     $ python main.py --is_train=False --synthetic_image_dir="./data/gaze/UnityEyes/"
 
@@ -54,11 +54,6 @@ To test with an existing model:
 - Used an Adam optimizer not a Stochatstic Gradient Descent.
 - Only used 83K (14% of 1.2M used by the paper) synthetic images from `UnityEyes`.
 - Manually choose hyperparameters for `B` and `lambda` because those are not specified in the paper.
-
-
-## Example real images from MPIIGaze dataset
-
-![MPIIGaze_sample](./assets/MPIIGaze_samples.png)
 
 
 ## Training results
