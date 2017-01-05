@@ -156,7 +156,7 @@ class DataLoader(object):
 
     self.real_data, synthetic_image_path = load(config, self.data_path, self.sample_path)
 
-    self.synthetic_data_paths = glob(os.path.join(synthetic_image_path, '*_cropped.png'))
+    self.synthetic_data_paths = np.array(glob(os.path.join(synthetic_image_path, '*_cropped.png')))
     self.synthetic_data_dims = list(imread(self.synthetic_data_paths[0]).shape) + [1]
 
     self.synthetic_data_paths.sort()

@@ -18,7 +18,7 @@ def _update_dict(layer_dict, scope, layer):
   layer_dict[name] = layer
 
 def image_from_paths(paths, shape, is_grayscale=True, seed=None):
-  filename_queue = tf.train.string_input_producer(paths, shuffle=False, seed=seed)
+  filename_queue = tf.train.string_input_producer(list(paths), shuffle=False, seed=seed)
   reader = tf.WholeFileReader()
   filename, data = reader.read(filename_queue)
   image = tf.image.decode_png(data, channels=3, dtype=tf.uint8)

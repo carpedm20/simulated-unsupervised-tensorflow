@@ -35,7 +35,7 @@ train_arg.add_argument('--task', type=str, default='generative',
                        choices=['generative', 'estimation'], help='')
 train_arg.add_argument('--is_train', type=str2bool, default=True, help='')
 train_arg.add_argument('--optimizer', type=str, default='rmsprop', help='')
-train_arg.add_argument('--max_step', type=int, default=5000, help='')
+train_arg.add_argument('--max_step', type=int, default=10000, help='')
 train_arg.add_argument('--reg_scale', type=float, default=0.5, help='')
 train_arg.add_argument('--initial_K_d', type=int, default=200, help='')
 train_arg.add_argument('--initial_K_g', type=int, default=1000, help='')
@@ -58,6 +58,7 @@ misc_arg.add_argument('--load_path', type=str, default='')
 misc_arg.add_argument('--debug', type=str2bool, default=False)
 misc_arg.add_argument('--gpu_memory_fraction', type=float, default=1.0)
 misc_arg.add_argument('--max_image_summary', type=int, default=7)
+misc_arg.add_argument('--sample_image_grid', type=eval, default='[8, 8]')
 
 def get_config():
   config, unparsed = parser.parse_known_args()

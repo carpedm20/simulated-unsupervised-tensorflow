@@ -13,6 +13,8 @@ from utils import imwrite, imread, img_tile
 class Trainer(object):
   def __init__(self, config, rng):
     self.config = config
+    self.rng = rng
+
     self.task = config.task
     self.model_dir = config.model_dir
     self.gpu_memory_fraction = config.gpu_memory_fraction
@@ -30,10 +32,10 @@ class Trainer(object):
         'gaze': gaze_data.DataLoader,
         'hand': hand_data.DataLoader,
     }[config.data_set]
-    self.data_loader = DataLoader(config, rng=rng)
+    self.data_loader = DataLoader(config, rng=self.rng)
 
     self.model = Model(config, self.data_loader)
-    self.history_buffer = Buffer(config, rng)
+    self.history_buffer = Buffer(config, self.rng)
 
     self.summary_ops = {
         'test_synthetic_images': {
@@ -74,9 +76,11 @@ class Trainer(object):
     print("[*] Training starts...")
     self._summary_writer = None
 
+    sample_num = reduce(lambda x, y: x*y, self.config.sample_image_grid)
+    idxs = self.rng.choice(len(self.data_loader.synthetic_data_paths), sample_num)
     test_samples = np.expand_dims(np.stack(
         [imread(path) for path in \
-            self.data_loader.synthetic_data_paths[:self.config.max_image_summary]]
+            self.data_loader.synthetic_data_paths[idxs]]
     ), -1)
 
     def train_refiner(push_buffer=False):
@@ -141,7 +145,7 @@ class Trainer(object):
 
     path = os.path.join(
         self.config.sample_dir, self.config.model_name, "{}.png".format(step))
-    imwrite(path, img_tile(summaries['output'], tile_shape=[8, 8])[:,:,0])
+    imwrite(path, img_tile(summaries['output'], tile_shape=self.config.sample_image_grid)[:,:,0])
 
   def _get_summary_writer(self, result):
     if result['step'] % self.log_step == 0:
