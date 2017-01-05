@@ -39,20 +39,23 @@ class Model(object):
     self.synthetic_batch_size = tf.placeholder(tf.int32, [], "synthetic_batch_size")
     self.synthetic_filenames, self.synthetic_images = \
         image_from_paths(self.data_loader.synthetic_data_paths,
-                         self.data_loader.synthetic_data_dims)
+                         self.data_loader.synthetic_data_dims, seed=self.config.random_seed)
 
-    if self.config.is_train:
-      self.x_filename, self.x = tf.train.shuffle_batch(
-          [self.synthetic_filenames, self.synthetic_images],
-          batch_size=self.synthetic_batch_size,
-          num_threads=4, capacity=capacity,
-          min_after_dequeue=min_after_dequeue, name='synthetic_inputs')
-    else:
-      self.x_filename, self.x = tf.train.batch(
-          [self.synthetic_filenames, self.synthetic_images],
-          batch_size=self.synthetic_batch_size,
-          num_threads=4, capacity=capacity,
-          min_after_dequeue=min_after_dequeue, name='synthetic_inputs')
+    self.x_filename, self.x = tf.train.shuffle_batch(
+        [self.synthetic_filenames, self.synthetic_images],
+        batch_size=self.synthetic_batch_size,
+        num_threads=4, capacity=capacity,
+        min_after_dequeue=min_after_dequeue, name='synthetic_inputs')
+
+    self.test_x_filename, self.test_x = tf.train.batch(
+        [self.synthetic_filenames, self.synthetic_images],
+        batch_size=self.synthetic_batch_size,
+        num_threads=1, capacity=capacity,
+        name='synthetic_test_inputs')
+
+    if not self.config.is_train:
+      self.x_filename, self.x = \
+          self.test_x_filename, self.test_x
 
     self.y = tf.placeholder(
         tf.uint8, [None, None, None, self.input_channel], name='real_inputs')
@@ -62,6 +65,7 @@ class Model(object):
     resize_dim = [self.input_height, self.input_width]
     self.resized_x = tf.image.resize_images(self.x, resize_dim)
     self.resized_y = tf.image.resize_images(self.y, resize_dim)
+    self.resized_test_x = tf.image.resize_images(self.test_x, resize_dim)
 
     self.normalized_x = normalize(self.resized_x)
     self.normalized_y = normalize(self.resized_y)
@@ -245,7 +249,7 @@ class Model(object):
 
     def test_refiner(sess, feed_dict, summary_writer=None, with_output=False):
       fetch = {
-          'x_filename': self.x_filename,
+          'filename': self.x_filename,
           'loss': self.refiner_loss,
           'step': self.refiner_step,
       }

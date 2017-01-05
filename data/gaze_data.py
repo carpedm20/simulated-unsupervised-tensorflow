@@ -159,6 +159,8 @@ class DataLoader(object):
     self.synthetic_data_paths = glob(os.path.join(synthetic_image_path, '*_cropped.png'))
     self.synthetic_data_dims = list(imread(self.synthetic_data_paths[0]).shape) + [1]
 
+    self.synthetic_data_paths.sort()
+
     if np.rank(self.real_data) == 3:
       self.real_data = np.expand_dims(self.real_data, -1)
     

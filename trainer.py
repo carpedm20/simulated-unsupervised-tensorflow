@@ -1,4 +1,5 @@
 import os
+import numpy as np
 from tqdm import trange
 import tensorflow as tf
 from tensorflow.contrib.framework.python.ops import arg_scope
@@ -7,7 +8,7 @@ from model import Model
 from buffer import Buffer
 import data.gaze_data as gaze_data
 import data.hand_data as hand_data
-from utils import imwrite, img_tile
+from utils import imwrite, imread, img_tile
 
 class Trainer(object):
   def __init__(self, config, rng):
@@ -73,9 +74,10 @@ class Trainer(object):
     print("[*] Training starts...")
     self._summary_writer = None
 
-    test_samples = self.model.resized_x.eval({
-        self.model.synthetic_batch_size: 64,
-      }, session=self.sess)
+    test_samples = np.expand_dims(np.stack(
+        [imread(path) for path in \
+            self.data_loader.synthetic_data_paths[:self.config.max_image_summary]]
+    ), -1)
 
     def train_refiner():
       feed_dict = {
@@ -88,7 +90,7 @@ class Trainer(object):
 
       if res['step'] % self.log_step == 0:
         feed_dict = {
-            self.model.resized_x: test_samples,
+            self.model.x: test_samples,
         }
         self._inject_summary(
           'test_refined_images', feed_dict, res['step'])
@@ -128,6 +130,8 @@ class Trainer(object):
       }
       res = self.model.test_refiner(
           self.sess, feed_dict, self._summary_writer, with_output=True)
+      import ipdb; ipdb.set_trace() 
+      x = 123
 
   def _inject_summary(self, tag, feed_dict, step):
     summaries = self.sess.run(self.summary_ops[tag], feed_dict)
