@@ -41,7 +41,7 @@ class Model(object):
         image_from_paths(self.data_loader.synthetic_data_paths,
                          self.data_loader.synthetic_data_dims)
 
-    if config.is_train:
+    if self.config.is_train:
       self.x_filename, self.x = tf.train.shuffle_batch(
           [self.synthetic_filenames, self.synthetic_images],
           batch_size=self.synthetic_batch_size,

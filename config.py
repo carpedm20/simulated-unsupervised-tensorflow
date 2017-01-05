@@ -57,7 +57,7 @@ misc_arg.add_argument('--sample_dir', type=str, default='samples')
 misc_arg.add_argument('--load_path', type=str, default='')
 misc_arg.add_argument('--debug', type=str2bool, default=False)
 misc_arg.add_argument('--gpu_memory_fraction', type=float, default=1.0)
-misc_arg.add_argument('--max_image_summary', type=int, default=3)
+misc_arg.add_argument('--max_image_summary', type=int, default=7)
 
 def get_config():
   config, unparsed = parser.parse_known_args()
