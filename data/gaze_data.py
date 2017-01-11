@@ -96,7 +96,7 @@ def maybe_preprocess(config, data_path, sample_path=None):
 
         jpg_paths = jpg_paths[:max_synthetic_num]
         for json_path in tqdm(json_paths):
-          jpg_path = jpg_path.replace('json', 'jpg')
+          jpg_path = json_path.replace('json', 'jpg')
 
           if not os.path.exists(jpg_path):
             continue
