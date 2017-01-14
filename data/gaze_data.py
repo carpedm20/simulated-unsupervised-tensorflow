@@ -82,10 +82,10 @@ def maybe_preprocess(config, data_path, sample_path=None):
     cropped_jpg_paths = glob(os.path.join(synthetic_image_path, '*_cropped.png'))
 
     if len(jpg_paths) == 0:
-      print("[!] No images in {}. Skip.".format(synthetic_image_path))
+      print("[!] No images in ./{}. Skip.".format(synthetic_image_path))
       continue
     else:
-      print("[!] Found images in {}.".format(synthetic_image_path))
+      print("[!] Found images in ./{}.".format(synthetic_image_path))
       if len(cropped_jpg_paths) != len(jpg_paths):
         json_paths = glob(os.path.join(
             data_path, '{}/*.json'.format(config.synthetic_image_dir)))
@@ -94,7 +94,7 @@ def maybe_preprocess(config, data_path, sample_path=None):
             "[!] # of synthetic data ({}) is smaller than max_synthetic_num ({})". \
                 format(len(jpg_paths), max_synthetic_num)
 
-        jpg_paths = jpg_paths[:max_synthetic_num]
+        json_paths = json_paths[:max_synthetic_num]
         for json_path in tqdm(json_paths):
           jpg_path = json_path.replace('json', 'jpg')
 

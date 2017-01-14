@@ -131,7 +131,7 @@ class Model(object):
       return tf.ones_like(layer, dtype=tf.int32)[:,:,:,0]
 
     def log_loss(logits, label, name):
-      return tf.reduce_sum(SE_loss(logits, label), [1, 2], name=name)
+      return tf.reduce_sum(SE_loss(logits=logits, labels=label), [1, 2], name=name)
 
     with tf.name_scope("refiner"):
       self.realism_loss = log_loss(
