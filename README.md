@@ -49,14 +49,15 @@ To refine all synthetic images with a pretrained model:
     $ python main.py --is_train=False --synthetic_image_dir="./data/gaze/UnityEyes/"
 
 
-## Differences with the paper
+## Training results
+
+
+### Differences with the paper
 
 - Used Adam and Stochatstic Gradient Descent optimizer.
 - Only used 83K (14% of 1.2M used by the paper) synthetic images from `UnityEyes`.
 - Manually choose hyperparameters for `B` and `lambda` because those are not specified in the paper.
 
-
-## Training results
 
 ### Experiments #1
 
