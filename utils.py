@@ -21,7 +21,10 @@ loadmat = sio.loadmat
 
 def prepare_dirs(config):
   if config.load_path:
-    config.model_name = "{}_{}".format(config.task, config.load_path)
+    if config.load_path.startswith(config.task):
+      config.model_name = config.load_path
+    else:
+      config.model_name = "{}_{}".format(config.task, config.load_path)
   else:
     config.model_name = "{}_{}".format(config.task, get_time())
 
