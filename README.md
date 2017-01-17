@@ -18,7 +18,7 @@ TensorFlow implementation of [Learning from Simulated and Unsupervised Images th
 To generate synthetic dataset:
 
 1. Run [UnityEyes](http://www.cl.cam.ac.uk/research/rainbow/projects/unityeyes/) with changing `resolution` to `640x480` and `Camera parameters` to `[0, 0, 20, 40]`.
-2. Move generated images into `data/gaze/UnityEyes`.
+2. Move generated images and json files into `data/gaze/UnityEyes`.
 
 The `data` directory should looks like:
 
@@ -32,7 +32,9 @@ The `data` directory should looks like:
     │   │           └── ...
     │   └── UnityEyes # contains images of UnityEyes
     │       ├── 1.jpg
+    │       ├── 1.json
     │       ├── 2.jpg
+    │       ├── 2.json
     │       └── ...
     ├── __init__.py
     ├── gaze_data.py
