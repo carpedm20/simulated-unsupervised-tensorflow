@@ -4,6 +4,7 @@ import numpy as np
 from datetime import datetime
 
 import tensorflow as tf
+import tensorflow.contrib.slim as slim
 
 try:
   import scipy.misc
@@ -42,17 +43,8 @@ def get_time():
   return datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 
 def show_all_variables():
-  print("")
-  total_count = 0
-  for idx, op in enumerate(tf.trainable_variables()):
-    shape = op.get_shape()
-    count = np.prod(shape)
-    print("[%2d] %s %s = %s" % (idx, op.name, shape, "{:,}".format(int(count))))
-    total_count += int(count)
-  print("=" * 40)
-  print("[Total] variable size: %s" % "{:,}".format(total_count))
-  print("=" * 40)
-  print("")
+  model_vars = tf.trainable_variables()
+  slim.model_analyzer.analyze_vars(model_vars, print_info=True)
 
 def img_tile(imgs, aspect_ratio=1.0, tile_shape=None, border=1,
              border_color=0):

@@ -299,7 +299,7 @@ class Model(object):
     return output 
 
   def _build_discrim(self, layer, name, reuse=False):
-    with tf.variable_scope("discriminator") as sc:
+    with tf.variable_scope("discriminator", reuse=reuse) as sc:
       layer = conv2d(layer, 96, 3, 2, scope="conv_1", name=name)
       layer = conv2d(layer, 64, 3, 2, scope="conv_2", name=name)
       layer = max_pool2d(layer, 3, 1, scope="max_1", name=name)
