@@ -111,13 +111,13 @@ class Model(object):
       self.R_x = self._build_refiner(self.normalized_x)
       self.denormalized_R_x = denormalize(self.R_x)
 
+      self.D_y, self.D_y_logits = \
+          self._build_discrim(self.normalized_y, name="D_y")
       self.D_R_x, self.D_R_x_logits = \
           self._build_discrim(self.R_x, name="D_R_x", reuse=True)
       self.D_R_x_history, self.D_R_x_history_logits = \
           self._build_discrim(self.R_x_history,
                               name="D_R_x_history", reuse=True)
-      self.D_y, self.D_y_logits = \
-          self._build_discrim(self.normalized_y, name="D_y")
 
       #self.estimate_outputs = self._build_estimation_network()
     self._build_loss()
@@ -299,7 +299,7 @@ class Model(object):
     return output 
 
   def _build_discrim(self, layer, name, reuse=False):
-    with tf.variable_scope("discriminator") as sc:
+    with tf.variable_scope("discriminator", reuse=reuse) as sc:
       layer = conv2d(layer, 96, 3, 2, scope="conv_1", name=name)
       layer = conv2d(layer, 64, 3, 2, scope="conv_2", name=name)
       layer = max_pool2d(layer, 3, 1, scope="max_1", name=name)
