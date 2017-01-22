@@ -36,7 +36,7 @@ def resnet_block(
         inputs, num_outputs, kernel_size, stride,
         padding=padding, activation_fn=tf.nn.relu, scope="conv1")
     layer = conv2d(
-        inputs, num_outputs, kernel_size, stride,
+        layer, num_outputs, kernel_size, stride,
         padding=padding, activation_fn=None, scope="conv2")
     outputs = tf.nn.relu(tf.add(inputs, layer))
   _update_dict(layer_dict, scope, outputs)
