@@ -187,7 +187,7 @@ class Model(object):
           fake_label(self.D_R_x_history_logits),
           "refiner_d_loss_with_history")
       self.discrim_loss_with_history = tf.reduce_mean(
-          tf.concat_v2([self.refiner_d_loss, self.refiner_d_loss_with_history], axis=0) + \
+          tf.concat([self.refiner_d_loss, self.refiner_d_loss_with_history], axis=0) + \
               self.synthetic_d_loss, name="discrim_loss_with_history")
 
       if self.debug:
