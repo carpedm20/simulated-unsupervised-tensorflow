@@ -291,9 +291,10 @@ class Model(object):
 
   def _build_refiner(self, layer):
     with tf.variable_scope("refiner") as sc:
+      layer = conv2d(layer, 64, 3, 1, scope="conv_1")
       layer = repeat(layer, 4, resnet_block, scope="resnet")
       layer = conv2d(layer, 1, 1, 1, 
-                     activation_fn=None, scope="conv_1")
+                     activation_fn=None, scope="conv_2")
       output = tanh(layer, name="tanh")
       self.refiner_vars = tf.contrib.framework.get_variables(sc)
     return output 
